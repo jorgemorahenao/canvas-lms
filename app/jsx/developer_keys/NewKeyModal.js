@@ -21,7 +21,7 @@ import $ from 'jquery'
 
 import CloseButton from '@instructure/ui-buttons/lib/components/CloseButton'
 import Heading from '@instructure/ui-elements/lib/components/Heading'
-import Modal, {ModalHeader, ModalBody} from '@instructure/ui-overlays/lib/components/Modal'
+import Modal, {ModalHeader, ModalBody, ModalFooter} from '@instructure/ui-overlays/lib/components/Modal'
 import Spinner from '@instructure/ui-elements/lib/components/Spinner'
 import View from '@instructure/ui-layout/lib/components/View'
 import React from 'react'
@@ -79,12 +79,38 @@ export default class DeveloperKeyModal extends React.Component {
     return this.newForm && this.newForm.testClusterOnly
   }
 
+  get isLtiKey() {
+    return this.props.createLtiKeyState.isLtiKey
+  }
+
+  get isSaving() {
+    return this.props.createOrEditDeveloperKeyState.developerKeyCreateOrEditPending || this.props.createLtiKeyState.saveToolConfigurationPending
+  }
+
+  get isJsonConfig () {
+    return this.props.createLtiKeyState.configurationMethod === 'json'
+  }
+
+  get isUrlConfig () {
+    return this.props.createLtiKeyState.configurationMethod === 'url'
+  }
+
+  get isManualConfig () {
+    return this.props.createLtiKeyState.configurationMethod === 'manual'
+  }
+
+
+  hasRedirectUris(formData) {
+    const redirect_uris = formData.get("developer_key[redirect_uris]")
+    return redirect_uris && redirect_uris.trim().length !== 0
+  }
+
   saveCustomizations = () => {
     const customFields = new FormData(this.submissionForm).get('custom_fields')
     const { store, actions, createLtiKeyState, createOrEditDeveloperKeyState } = this.props
 
     store.dispatch(actions.ltiKeysUpdateCustomizations(
-      createLtiKeyState.enabledScopes,
+      {scopes: createLtiKeyState.enabledScopes},
       createLtiKeyState.disabledPlacements,
       createOrEditDeveloperKeyState.developerKey.id,
       createLtiKeyState.toolConfiguration,
@@ -95,6 +121,7 @@ export default class DeveloperKeyModal extends React.Component {
   }
 
   submitForm = () => {
+    const { store: { dispatch }, actions: { createOrEditDeveloperKey } } = this.props
     const method = this.developerKey() ? 'put' : 'post'
     const formData = new FormData(this.submissionForm)
 
@@ -117,9 +144,8 @@ export default class DeveloperKeyModal extends React.Component {
       formData.append('developer_key[test_cluster_only]', this.testClusterOnly)
     }
 
-    this.props.store.dispatch(
-      this.props.actions.createOrEditDeveloperKey(formData, this.developerKeyUrl(), method)
-    )
+    return dispatch(createOrEditDeveloperKey(formData, this.developerKeyUrl(), method))
+      .then(() => { this.closeModal() })
   }
 
   saveLTIKeyEdit (settings, developerKey) {
@@ -156,16 +182,13 @@ export default class DeveloperKeyModal extends React.Component {
     }
     let settings = {};
     let developerKey = {}
-    if (this.props.createLtiKeyState.configurationMethod === 'json') {
-      try {
-        settings = JSON.parse(formData.get("tool_configuration"))
-      } catch(e) {
-        if (e instanceof SyntaxError) {
-          $.flashError(I18n.t('Json is not valid. Please submit properly formatted json.'))
-          return
-        }
+    if (this.isJsonConfig) {
+      if (!this.state.toolConfiguration) {
+        this.setState({submitted: true})
+        return
       }
-    } else if(this.props.createLtiKeyState.configurationMethod === 'manual') {
+      settings = this.state.toolConfiguration
+    } else if(this.isManualConfig) {
       if (!this.manualForm.valid()) {
         this.setState({submitted: true})
         return
@@ -197,110 +220,33 @@ export default class DeveloperKeyModal extends React.Component {
     }
   }
 
-  hasRedirectUris(formData) {
-    const redirect_uris = formData.get("developer_key[redirect_uris]")
-    return redirect_uris && redirect_uris.trim().length !== 0
-  }
-
-  get isLtiKey() {
-    return this.props.createLtiKeyState.isLtiKey
-  }
-
-  get isSaving() {
-    return this.props.createOrEditDeveloperKeyState.developerKeyCreateOrEditPending || this.props.createLtiKeyState.saveToolConfigurationPending
-  }
-
-  modalBody() {
-    if (this.isSaving) {
-      return this.spinner()
-    }
-    return this.developerKeyForm()
-  }
-
-  modalFooter() {
-    if (this.isLtiKey) {
-      const { createLtiKeyState, store, actions, createOrEditDeveloperKeyState: { editing } } = this.props
-      return(
-        <LtiKeyFooter
-          onCancelClick={this.closeModal}
-          onSaveClick={this.saveCustomizations}
-          onAdvanceToCustomization={this.saveLtiToolConfiguration}
-          customizing={createLtiKeyState.customizing}
-          disable={this.isSaving}
-          ltiKeysSetCustomizing={actions.ltiKeysSetCustomizing}
-          dispatch={store.dispatch}
-          saveOnly={editing || createLtiKeyState.configurationMethod === 'manual'}
-        />
-      )
-    }
-    return(
-      <NewKeyFooter
-        disable={this.isSaving}
-        onCancelClick={this.closeModal}
-        onSaveClick={this.submitForm}
-      />
-    )
-  }
-
-  spinner() {
-    return (
-      <View
-        as="div"
-        textAlign="center"
-      >
-        <Spinner title={I18n.t('Creating Key')} margin="0 0 0 medium" />
-      </View>
-    )
-  }
-
-  developerKeyForm() {
-    const {
-      createLtiKeyState,
-      availableScopes,
-      availableScopesPending,
-      createOrEditDeveloperKeyState: { developerKey, editing },
-      actions
-    } = this.props;
-
-    return <NewKeyForm
-      ref={this.setNewFormRef}
-      developerKey={developerKey}
-      availableScopes={availableScopes}
-      availableScopesPending={availableScopesPending}
-      dispatch={this.props.store.dispatch}
-      listDeveloperKeyScopesSet={actions.listDeveloperKeyScopesSet}
-      setEnabledScopes={actions.ltiKeysSetEnabledScopes}
-      setDisabledPlacements={actions.ltiKeysSetDisabledPlacements}
-      setPrivacyLevel={actions.ltiKeysSetPrivacyLevel}
-      createLtiKeyState={createLtiKeyState}
-      setLtiConfigurationMethod={actions.setLtiConfigurationMethod}
-      tool_configuration={this.toolConfiguration}
-      editing={editing}
-      showRequiredMessages={this.state.submitted && !this.hasRedirectUris(new FormData(this.submissionForm))}
-    />
+  updateToolConfiguration = (update) => {
+    this.setState({ toolConfiguration: update })
   }
 
   setNewFormRef = node => { this.newForm = node }
-
-  modalContainerRef = node => { this.modalContainer = node }
-
-  modalIsOpen() {
-    return this.props.createOrEditDeveloperKeyState.developerKeyModalOpen
-  }
 
   closeModal = () => {
     const { actions, store } = this.props
     store.dispatch(actions.developerKeysModalClose())
     store.dispatch(actions.resetLtiState())
     store.dispatch(actions.editDeveloperKey())
-    this.setState({toolConfiguration: null})
+    this.setState({toolConfiguration: null, submitted: false})
   }
 
   render() {
+    const {
+      createLtiKeyState,
+      availableScopes,
+      availableScopesPending,
+      store,
+      actions,
+      createOrEditDeveloperKeyState: { developerKey, editing, developerKeyModalOpen }
+    } = this.props
     return (
-      <div ref={this.modalContainerRef}>
+      <div>
         <Modal
-          open={this.modalIsOpen()}
+          open={developerKeyModalOpen}
           onDismiss={this.closeModal}
           size="fullscreen"
           label={this.modalTitle()}
@@ -311,8 +257,49 @@ export default class DeveloperKeyModal extends React.Component {
             </CloseButton>
             <Heading>{I18n.t('Key Settings')}</Heading>
           </ModalHeader>
-          <ModalBody>{this.modalBody()}</ModalBody>
-          {this.modalFooter()}
+          <ModalBody>
+            {this.isSaving
+              ? <View as="div" textAlign="center">
+                  <Spinner title={I18n.t('Creating Key')} margin="0 0 0 medium" />
+                </View>
+              : <NewKeyForm
+                  ref={this.setNewFormRef}
+                  developerKey={developerKey}
+                  availableScopes={availableScopes}
+                  availableScopesPending={availableScopesPending}
+                  dispatch={this.props.store.dispatch}
+                  listDeveloperKeyScopesSet={actions.listDeveloperKeyScopesSet}
+                  setEnabledScopes={actions.ltiKeysSetEnabledScopes}
+                  setDisabledPlacements={actions.ltiKeysSetDisabledPlacements}
+                  setPrivacyLevel={actions.ltiKeysSetPrivacyLevel}
+                  createLtiKeyState={createLtiKeyState}
+                  setLtiConfigurationMethod={actions.setLtiConfigurationMethod}
+                  tool_configuration={this.toolConfiguration}
+                  editing={editing}
+                  showRequiredMessages={this.state.submitted}
+                  updateToolConfiguration={this.updateToolConfiguration}
+                />
+            }
+          </ModalBody>
+          <ModalFooter>
+            {this.isLtiKey
+              ? <LtiKeyFooter
+                  onCancelClick={this.closeModal}
+                  onSaveClick={this.saveCustomizations}
+                  onAdvanceToCustomization={this.saveLtiToolConfiguration}
+                  customizing={createLtiKeyState.customizing}
+                  disable={this.isSaving}
+                  ltiKeysSetCustomizing={actions.ltiKeysSetCustomizing}
+                  dispatch={store.dispatch}
+                  saveOnly={editing || this.isManualConfig}
+                />
+              : <NewKeyFooter
+                  disable={this.isSaving}
+                  onCancelClick={this.closeModal}
+                  onSaveClick={this.submitForm}
+                />
+            }
+          </ModalFooter>
         </Modal>
       </div>
     )

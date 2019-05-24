@@ -175,7 +175,7 @@ test('it closes the modal if isOpen prop is false', () => {
 
 test('it sends the contents of the form saving', () => {
   const createOrEditSpy = sinon.spy()
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
 
   const fakeActions = {
     createOrEditDeveloperKey: createOrEditSpy
@@ -220,7 +220,7 @@ test('it sends the contents of the form saving', () => {
 
 test('sends form content without scopes and require_scopes set to false when not require_scopes', () => {
   const createOrEditSpy = sinon.spy()
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
 
   const fakeActions = {
     createOrEditDeveloperKey: createOrEditSpy
@@ -263,7 +263,7 @@ test('sends form content without scopes and require_scopes set to false when not
 
 test('it adds each selected scope to the form data', () => {
   const createOrEditSpy = sinon.spy()
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
   const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: ['test'] })
@@ -291,7 +291,7 @@ test('it adds each selected scope to the form data', () => {
 
 test('it removes testClusterOnly from the form data if it is undefined', () => {
   const createOrEditSpy = sinon.spy()
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
   const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: ['test'] })
@@ -321,7 +321,7 @@ test('it removes testClusterOnly from the form data if it is undefined', () => {
 test('flashes an error if no scopes are selected', () => {
   const flashStub = sinon.stub($, 'flashError')
   const createOrEditSpy = sinon.spy()
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
   const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: [] })
@@ -349,7 +349,7 @@ test('flashes an error if no scopes are selected', () => {
 
 test('allows saving if the key previously had scopes', () => {
   const flashStub = sinon.stub($, 'flashError')
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
   const fakeStore = { dispatch: dispatchSpy }
   const keyWithScopes = Object.assign({}, developerKey, { require_scopes: true, scopes: selectedScopes })
   const editKeyWithScopesState = Object.assign({}, editDeveloperKeyState, { developerKey: keyWithScopes })
@@ -370,58 +370,6 @@ test('allows saving if the key previously had scopes', () => {
   wrapper.instance().submitForm()
   notOk(flashStub.called)
   flashStub.restore()
-  wrapper.unmount()
-})
-
-test('renders the LTI footer if "ltiKey" is true', () => {
-  window.ENV = window.ENV || {}
-  window.ENV.validLtiScopes = {}
-  window.ENV.validLtiPlacements = []
-
-  const createLtiKeyStateOn = {
-    isLtiKey: true,
-    customizing: true,
-    toolConfiguration: {},
-    validScopes: [],
-    validPlacements: []
-  }
-
-  const wrapper = mount(
-    <DeveloperKeyModal
-      createLtiKeyState={createLtiKeyStateOn}
-      availableScopes={{}}
-      availableScopesPending={false}
-      closeModal={() => {}}
-      createOrEditDeveloperKeyState={createDeveloperKeyState}
-      actions={fakeActions}
-      store={{dispatch: () => {}}}
-      mountNode={modalMountNode}
-      selectedScopes={selectedScopes}
-    />
-  )
-
-  ok(wrapper.instance().modalFooter().props.customizing)
-  wrapper.unmount()
-  window.ENV.validLtiScopes = undefined
-  window.ENV.validLtiPlacements = undefined
-})
-
-test('renders the non LTI footer if "ltiKey" is false', () => {
-  const wrapper = mount(
-    <DeveloperKeyModal
-      createLtiKeyState={createLtiKeyState}
-      availableScopes={{}}
-      availableScopesPending={false}
-      closeModal={() => {}}
-      createOrEditDeveloperKeyState={createDeveloperKeyState}
-      actions={fakeActions}
-      store={{dispatch: () => {}}}
-      mountNode={modalMountNode}
-      selectedScopes={selectedScopes}
-    />
-  )
-
-  notOk(wrapper.instance().modalFooter().props.customizing)
   wrapper.unmount()
 })
 
@@ -471,14 +419,14 @@ test('saves customizations', () => {
     />
   )
   wrapper.instance().saveCustomizations()
-  ok(ltiStub.calledWith(['https://www.test.com/lineitem'], ['account_navigation'], 22, {}, null))
+  ok(ltiStub.calledWith({scopes: ['https://www.test.com/lineitem']}, ['account_navigation'], 22, {}, null))
   wrapper.unmount()
 })
 
 test('flashes an error if redirect_uris is empty', () => {
   const flashStub = sinon.stub($, 'flashError')
   const createOrEditSpy = sinon.spy()
-  const dispatchSpy = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
   const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: [], redirect_uris: '' })

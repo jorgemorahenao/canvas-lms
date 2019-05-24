@@ -20,6 +20,10 @@ import PropTypes from "prop-types";
 import React from "react";
 import {Editor} from "@tinymce/tinymce-react";
 
+import themeable from '@instructure/ui-themeable'
+import {IconKeyboardShortcutsLine} from '@instructure/ui-icons'
+import {ScreenReaderContent} from '@instructure/ui-a11y'
+
 import formatMessage from "../format-message";
 import * as contentInsertion from "./contentInsertion";
 import indicatorRegion from "./indicatorRegion";
@@ -27,7 +31,7 @@ import indicate from "../common/indicate";
 import Bridge from "../bridge";
 import CanvasContentTray, {trayProps} from './plugins/shared/CanvasContentTray'
 import StatusBar from './StatusBar';
-import themeable from '@instructure/ui-themeable'
+import ShowOnFocusButton from './ShowOnFocusButton'
 import theme from '../skins/theme'
 
 // we  `require` instead of `import` these 2 css files because the ui-themeable babel require hook only works with `require`
@@ -360,6 +364,11 @@ class RCEWrapper extends React.Component {
       this.iframe.contentDocument.body.classList.add('Underline-All-Links__enabled')
     }
     editor.on('wordCountUpdate', this.onWordCountUpdate)
+    // and an aria-label to the application div that wraps RCE
+    const tinyapp = document.querySelector('.tox-tinymce[role="application"]')
+    if (tinyapp) {
+      tinyapp.setAttribute('aria-label', formatMessage("Rich Content Editor"))
+    }
   }
 
   onWordCountUpdate = e => {
@@ -416,11 +425,13 @@ class RCEWrapper extends React.Component {
         'fontsizeselect formatselect | bold italic underline forecolor backcolor superscript ' +
         'subscript | align bullist outdent indent | ' +
         'instructure_links instructure_image instructure_record | ' +
-        'removeformat table instructure_equation instructure_equella'
+        'removeformat table instructure_equation' // instructure_equella'
       ],
       contextmenu: '',  // show the browser's native context menu
 
-      toolbar_drawer: 'floating'
+      toolbar_drawer: 'floating',
+      target_list: false, // don't show the target list when creating/editing links
+      link_title: false   // don't show the title input when creating/editing links
     }
   }
 
@@ -472,6 +483,17 @@ class RCEWrapper extends React.Component {
 
     return (
       <div ref={el => this._elementRef = el} className={styles.root}>
+        <ShowOnFocusButton
+          buttonRef={ref => this.loadPriorButton = ref}
+          buttonProps={{
+            variant: 'link',
+            onClick: () => {alert('thataway')},
+            icon: IconKeyboardShortcutsLine,
+            margin: 'xx-small'
+          }}
+          >
+            {<ScreenReaderContent>{formatMessage('View keyboard shortcuts')}</ScreenReaderContent>}
+        </ShowOnFocusButton>
         <Editor
           id={mceProps.textareaId}
           textareaName={mceProps.name}
