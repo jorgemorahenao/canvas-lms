@@ -18,7 +18,7 @@
 
 import React from 'react'
 import {func, number, shape, string, bool} from 'prop-types'
-import I18n from 'i18n!gradebook'
+import I18n from 'i18n!gradezilla'
 import View from '@instructure/ui-layout/lib/components/View'
 import {NumberInput} from '@instructure/ui-number-input'
 import PresentationContent from '@instructure/ui-a11y/lib/components/PresentationContent'
@@ -37,6 +37,13 @@ function defaultDurationLate(interval, secondsLate) {
   }
 
   return round(durationLate, 2)
+}
+
+function styles({color, showNumberInput}) {
+  return {
+    backgroundColor: color,
+    height: showNumberInput ? '5rem' : '2rem'
+  }
 }
 
 export default class SubmissionTrayRadioInput extends React.Component {
@@ -63,19 +70,15 @@ export default class SubmissionTrayRadioInput extends React.Component {
 
   constructor(props) {
     super(props)
-    this.showNumberInput = props.value === 'late' && props.checked
     const interval = props.latePolicy.lateSubmissionInterval
     this.numberInputLabel = interval === 'day' ? I18n.t('Days late') : I18n.t('Hours late')
     this.numberInputText = interval === 'day' ? I18n.t('Day(s)') : I18n.t('Hour(s)')
-    this.styles = {
-      backgroundColor: props.color,
-      height: this.showNumberInput ? '5rem' : '2rem'
-    }
     this.radioInputClasses = classnames('SubmissionTray__RadioInput', {
       'SubmissionTray__RadioInput-WithBackground': props.color !== 'transparent'
     })
 
     this.state = {
+      showNumberInput: props.value === 'late' && props.checked,
       numberInputValue: defaultDurationLate(interval, props.submission.secondsLate)
     }
   }
@@ -106,19 +109,31 @@ export default class SubmissionTrayRadioInput extends React.Component {
     this.setState({numberInputValue})
   }
 
+  handleRadioInputChange = event => {
+    if (this.props.value === 'late') {
+      this.setState({showNumberInput: event.target.checked})
+    }
+    this.props.onChange(event)
+  }
+
   render() {
+    const {
+      props: {color},
+      state: {showNumberInput}
+    } = this
+
     return (
-      <div className={this.radioInputClasses} style={this.styles}>
+      <div className={this.radioInputClasses} style={styles({color, showNumberInput})}>
         <RadioInput
           checked={this.props.checked}
           disabled={this.props.disabled}
           name="SubmissionTrayRadioInput"
           label={this.props.text}
-          onChange={this.props.onChange}
+          onChange={this.handleRadioInputChange}
           value={this.props.value}
         />
 
-        {this.showNumberInput && (
+        {showNumberInput && (
           <span className="NumberInput__Container NumberInput__Container-LeftIndent">
             <NumberInput
               value={this.state.numberInputValue.toString()}

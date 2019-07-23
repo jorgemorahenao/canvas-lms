@@ -88,7 +88,7 @@ pipeline {
             /* send message to gerrit */
             withGerritCredentials({ ->
               sh '''
-                gerrit_message="Gerrit Builder Started $JOB_BASE_NAME: canvas-lms:$NAME\n$BUILD_URL"
+                gerrit_message="\u2615 $JOB_BASE_NAME build started.\nTag: canvas-lms:$NAME\n$BUILD_URL"
                 ssh -i "$SSH_KEY_PATH" -l "$SSH_USERNAME" -p $GERRIT_PORT \
                   hudson@$GERRIT_HOST gerrit review -m "'$gerrit_message'" $GERRIT_CHANGE_NUMBER,$GERRIT_PATCHSET_NUMBER
               '''
@@ -115,11 +115,21 @@ pipeline {
           sh '''
             git config user.name $GERRIT_EVENT_ACCOUNT_NAME
             git config user.email $GERRIT_EVENT_ACCOUNT_EMAIL
-            git rebase --preserve-merges origin/$GERRIT_BRANCH
-            rebase_exit_code="$?"
-            if [ $rebase_exit_code != 0 ]; then
+
+            # this helps current build issues where cleanup is needed before proceeding.
+            # however the later git rebase --abort should be enough once this has
+            # been on jenkins for long enough to hit all nodes, maybe a couple days?
+            if [ -d .git/rebase-merge ]; then
+              echo "A previous build's rebase failed and the build exited without cleaning up. Aborting the previous rebase now..."
+              git rebase --abort
+            fi
+
+            # store exit_status inline to  ensures the script doesn't exit here on failures
+            git rebase --preserve-merges origin/$GERRIT_BRANCH; exit_status=$?
+            if [ $exit_status != 0 ]; then
               echo "Warning: Rebase couldn't resolve changes automatically, please resolve these conflicts locally."
               git rebase --abort
+              exit $exit_status
             fi
           '''
         }
@@ -167,7 +177,7 @@ pipeline {
       script {
         withGerritCredentials({ ->
           sh '''
-            gerrit_message="Gerrit Builder $JOB_BASE_NAME Successful.\nTag: $PATCHSET_TAG\nBuild: $BUILD_URL"
+            gerrit_message="\u2713 $JOB_BASE_NAME build successful.\nTag: canvas-lms:$NAME\n$BUILD_URL"
             ssh -i "$SSH_KEY_PATH" -l "$SSH_USERNAME" -p $GERRIT_PORT \
               hudson@$GERRIT_HOST gerrit review -m "'$gerrit_message'" $GERRIT_CHANGE_NUMBER,$GERRIT_PATCHSET_NUMBER
           '''
@@ -179,7 +189,7 @@ pipeline {
       script {
         withGerritCredentials({ ->
           sh '''
-            gerrit_message="Gerrit Builder $JOB_BASE_NAME: canvas-lms:$NAME Failed.\n$BUILD_URL
+            gerrit_message="\u274C $JOB_BASE_NAME build failed.\nTag: canvas-lms:$NAME\n$BUILD_URL"
             ssh -i "$SSH_KEY_PATH" -l "$SSH_USERNAME" -p $GERRIT_PORT \
               hudson@$GERRIT_HOST gerrit review -m "'$gerrit_message'" $GERRIT_CHANGE_NUMBER,$GERRIT_PATCHSET_NUMBER
           '''

@@ -73,7 +73,7 @@ class Enrollment::BatchStateUpdater
   def self.mark_enrollments_as_deleted(batch, sis_batch: nil, batch_mode: false)
     data = SisBatchRollBackData.build_dependent_data(sis_batch: sis_batch, contexts: batch, updated_state: 'deleted', batch_mode_delete: batch_mode)
     updates = {workflow_state: 'deleted', updated_at: Time.now.utc}
-    updates[sis_batch_id: sis_batch.id] if sis_batch
+    updates[:sis_batch_id] = sis_batch.id if sis_batch
     Enrollment.where(id: batch).update_all(updates)
     EnrollmentState.where(enrollment_id: batch).update_all(state: 'deleted', state_valid_until: nil)
     Score.where(enrollment_id: batch).order(:id).update_all(workflow_state: 'deleted', updated_at: Time.zone.now)
@@ -137,9 +137,7 @@ class Enrollment::BatchStateUpdater
     admin_ids = Enrollment.where(course_id: courses_to_touch_admins,
       type: ['TeacherEnrollment', 'TaEnrollment', 'DesignerEnrollment']).
       active.distinct.order(:user_id).pluck(:user_id)
-    admin_ids.each_slice(1000) do |sliced_admin_ids|
-      User.where(id: sliced_admin_ids).touch_all
-    end
+    User.clear_cache_keys(admin_ids, :todo_list)
   end
 
   def self.reset_notifications_cache(user_course_tuples)

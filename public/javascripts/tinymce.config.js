@@ -68,13 +68,13 @@ export default class EditorConfig {
       [!window.ENV.use_rce_enhancements && 'theme']: 'modern',
       [!window.ENV.use_rce_enhancements && 'skin']: false,
       directionality: getDirection(),
-      plugins: `autolink,media,paste,table,${window.ENV.use_rce_enhancements ? '' : 'textcolor'},link,directionality,lists,a11y_checker,wordcount`,
+      plugins: `autolink,media,paste,table,lists,${window.ENV.use_rce_enhancements ? ',instructure-context-bindings,instructure-embeds,instructure-ui-icons,instructure_condensed_buttons' : 'textcolor'},link,directionality,a11y_checker,wordcount`,
       external_plugins: {
         instructure_image: '/javascripts/tinymce_plugins/instructure_image/plugin.js',
         instructure_links: '/javascripts/tinymce_plugins/instructure_links/plugin.js',
         instructure_embed: '/javascripts/tinymce_plugins/instructure_embed/plugin.js',
         instructure_equation: '/javascripts/tinymce_plugins/instructure_equation/plugin.js',
-        instructure_equella: '/javascripts/tinymce_plugins/instructure_equella/plugin.js',
+        // instructure_equella: '/javascripts/tinymce_plugins/instructure_equella/plugin.js',
         instructure_external_tools: '/javascripts/tinymce_plugins/instructure_external_tools/plugin.js',
         instructure_record: '/javascripts/tinymce_plugins/instructure_record/plugin.js'
       },
@@ -130,7 +130,7 @@ export default class EditorConfig {
    * @return {String} comma delimited set of non-core buttons
    */
   buildInstructureButtons () {
-    let instructure_buttons = ' instructure_image instructure_equation'
+    let instructure_buttons = ` instructure_image instructure_equation${window.ENV.use_rce_enhancements ? ' lti_tool_dropdown' : ''}`
     instructure_buttons += this.external_buttons()
     if (this.instConfig && this.instConfig.allowMediaComments && (this.instConfig.kalturaSettings && !this.instConfig.kalturaSettings.hide_rte_button)) {
       instructure_buttons += ' instructure_record'

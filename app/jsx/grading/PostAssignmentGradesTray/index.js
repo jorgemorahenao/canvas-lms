@@ -32,6 +32,7 @@ import {
   postAssignmentGradesForSections,
   resolvePostAssignmentGradesStatus
 } from './Api'
+import {isHidden} from '../helpers/SubmissionHelper'
 import {showFlashAlert} from '../../shared/FlashAlert'
 
 function initialShowState() {
@@ -40,7 +41,8 @@ function initialShowState() {
     postType: EVERYONE,
     postingGrades: false,
     open: true,
-    selectedSectionIds: []
+    selectedSectionIds: [],
+    submissions: []
   }
 }
 
@@ -59,8 +61,10 @@ export default class PostAssignmentGradesTray extends PureComponent {
       postBySections: false,
       postType: EVERYONE,
       postingGrades: false,
+      onExited() {},
       open: false,
-      selectedSectionIds: []
+      selectedSectionIds: [],
+      submissions: []
     }
   }
 
@@ -70,8 +74,8 @@ export default class PostAssignmentGradesTray extends PureComponent {
 
   show(context) {
     this.setState({
-      ...context,
-      ...initialShowState()
+      ...initialShowState(),
+      ...context
     })
   }
 
@@ -88,7 +92,7 @@ export default class PostAssignmentGradesTray extends PureComponent {
   }
 
   async onPostClick() {
-    const {assignment, selectedSectionIds} = this.state
+    const {assignment, containerName, selectedSectionIds} = this.state
     const options = {gradedOnly: this.state.postType === GRADED}
     let postRequest
     let successMessage
@@ -122,12 +126,16 @@ export default class PostAssignmentGradesTray extends PureComponent {
 
     try {
       const progress = await postRequest
-      await resolvePostAssignmentGradesStatus(progress)
-      showFlashAlert({
-        message: successMessage,
-        type: 'success'
-      })
+      const postedSubmissionInfo = await resolvePostAssignmentGradesStatus(progress)
       this.dismiss()
+      this.state.onPosted(postedSubmissionInfo)
+
+      if (!assignment.anonymousGrading || containerName !== 'SPEED_GRADER') {
+        showFlashAlert({
+          message: successMessage,
+          type: 'success'
+        })
+      }
     } catch (error) {
       showFlashAlert({
         message: I18n.t('There was a problem posting assignment grades.'),
@@ -152,17 +160,30 @@ export default class PostAssignmentGradesTray extends PureComponent {
   }
 
   render() {
-    if (!this.state.assignment) {
+    const {
+      assignment,
+      containerName,
+      onExited,
+      open,
+      postBySections,
+      postingGrades,
+      postType,
+      sections,
+      selectedSectionIds,
+      submissions
+    } = this.state
+
+    if (!assignment) {
       return null
     }
 
-    const {assignment, onExited, sections} = this.state
+    const unpostedCount = submissions.filter(submission => isHidden(submission)).length
 
     return (
       <Tray
         label={I18n.t('Post grades tray')}
         onExited={onExited}
-        open={this.state.open}
+        open={open}
         placement="end"
       >
         <View as="div" padding="small">
@@ -182,15 +203,17 @@ export default class PostAssignmentGradesTray extends PureComponent {
         <Layout
           assignment={assignment}
           dismiss={this.dismiss}
+          containerName={containerName}
           onPostClick={this.onPostClick}
-          postBySections={this.state.postBySections}
+          postBySections={postBySections}
           postBySectionsChanged={this.postBySectionsChanged}
-          postType={this.state.postType}
+          postType={postType}
           postTypeChanged={this.postTypeChanged}
-          postingGrades={this.state.postingGrades}
+          postingGrades={postingGrades}
           sections={sections}
           sectionSelectionChanged={this.sectionSelectionChanged}
-          selectedSectionIds={this.state.selectedSectionIds}
+          selectedSectionIds={selectedSectionIds}
+          unpostedCount={unpostedCount}
         />
       </Tray>
     )

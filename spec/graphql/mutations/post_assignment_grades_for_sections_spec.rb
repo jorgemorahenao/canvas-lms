@@ -59,7 +59,8 @@ describe Mutations::PostAssignmentGradesForSections do
   end
 
   before(:each) do
-    course.enable_feature!(:post_policies)
+    course.enable_feature!(:new_gradebook)
+    PostPolicy.enable_feature!
     @section1_student = section1.enroll_user(User.create!, "StudentEnrollment", "active").user
     @section2_student = section2.enroll_user(User.create!, "StudentEnrollment", "active").user
   end
@@ -68,7 +69,7 @@ describe Mutations::PostAssignmentGradesForSections do
     let(:context) { { current_user: teacher } }
 
     it "requires that the PostPolicy feature be enabled" do
-      course.disable_feature!(:post_policies)
+      PostPolicy.disable_feature!
       result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
       expect(result.dig("errors", 0, "message")).to eql "Post Policies feature not enabled"
     end
@@ -112,13 +113,6 @@ describe Mutations::PostAssignmentGradesForSections do
       expect(result.dig("errors", 0, "message")).to eql expected_error
     end
 
-    it "allows posting by section for assignments that are no longer anonymized" do
-      assignment.update!(anonymous_grading: true)
-      assignment.post_submissions
-      result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
-      expect(result.dig("errors")).to be nil
-    end
-
     it "does not allow posting by section for moderated assignments that have not had grades published yet" do
       assignment.update!(moderated_grading: true, grader_count: 2, final_grader: teacher)
       result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
@@ -134,6 +128,7 @@ describe Mutations::PostAssignmentGradesForSections do
     end
 
     describe "posting the grades" do
+      let(:post_submissions_job) { Delayed::Job.where(tag:"Assignment#post_submissions").order(:id).last }
       let(:section1_student_submission) { assignment.submissions.find_by(user: @section1_student) }
       let(:section2_student_submission) { assignment.submissions.find_by(user: @section2_student) }
 
@@ -151,16 +146,29 @@ describe Mutations::PostAssignmentGradesForSections do
 
       it "returns the progress" do
         result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section2.id]), context)
-        progress = Progress.where(tag: "post_assignment_grades_for_sections").order(:id).last
+        progress = Progress.find(result.dig("data", "postAssignmentGradesForSections", "progress", "_id"))
         expect(result.dig("data", "postAssignmentGradesForSections", "progress", "_id").to_i).to be progress.id
       end
 
-      it "stores the ids of submissions posted on the Progress object" do
-        execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
-        post_submissions_job = Delayed::Job.where(tag:"Assignment#post_submissions").order(:id).last
+      it "stores the assignment id of submissions hidden on the Progress object" do
+        result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
         post_submissions_job.invoke_job
-        progress = Progress.where(tag: "post_assignment_grades_for_sections").order(:id).last
-        expect(progress.results[:submission_ids]).to match_array [section1_student_submission.id]
+        progress = Progress.find(result.dig("data", "postAssignmentGradesForSections", "progress", "_id"))
+        expect(progress.results[:assignment_id]).to eq assignment.id
+      end
+
+      it "stores the posted_at of submissions hidden on the Progress object" do
+        result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
+        post_submissions_job.invoke_job
+        progress = Progress.find(result.dig("data", "postAssignmentGradesForSections", "progress", "_id"))
+        expect(progress.results[:posted_at]).to eq section1_student_submission.reload.posted_at
+      end
+
+      it "stores the user ids of submissions hidden on the Progress object" do
+        result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
+        post_submissions_job.invoke_job
+        progress = Progress.find(result.dig("data", "postAssignmentGradesForSections", "progress", "_id"))
+        expect(progress.results[:user_ids]).to match_array [@section1_student.id]
       end
 
       it "returns the sections" do

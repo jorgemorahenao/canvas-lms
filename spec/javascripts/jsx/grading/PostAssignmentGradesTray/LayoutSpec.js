@@ -24,69 +24,58 @@ import {EVERYONE} from 'jsx/grading/PostAssignmentGradesTray/PostTypes'
 
 QUnit.module('PostAssignmentGradesTray Layout', suiteHooks => {
   let $container
-  let context
 
-  function assignmentFixture() {
-    return {
-      anonymizeStudents: false,
-      gradesPublished: true,
-      id: '2301',
-      name: 'Math 1.1'
-    }
+  function getHeader() {
+    return [...$container.querySelectorAll('h3')].find($header =>
+      $header.textContent.includes('Post Grades')
+    )
   }
 
   function getAnonymousText() {
-    const postText = 'Anonymous assignments cannot be posted by section.'
-    return [...$container.querySelectorAll('p')].find($p => $p.textContent === postText)
+    const postText =
+      'Grades can only be posted to everyone when the assignment is anonymous. Anonymity will be removed.'
+    return [...$container.querySelectorAll('div')].find($el => $el.textContent === postText)
   }
 
-  function getCloseButton() {
-    return [...$container.querySelectorAll('button')].find(
-      $button => $button.textContent === 'Close'
-    )
+  function getRefreshText() {
+    const refreshText = 'Posting grades will refresh your browser. This may take a moment.'
+    return [...$container.querySelectorAll('div')].find($el => $el.textContent === refreshText)
   }
 
-  function getLabel(text) {
-    return [...$container.querySelectorAll('label')].find($label =>
-      $label.textContent.includes(text)
-    )
-  }
-
-  function getPostButton() {
-    return [...$container.querySelectorAll('button')].find(
-      $button => $button.textContent === 'Post'
-    )
-  }
-
-  function getPostText() {
+  function getUnreleasedGradesAlertText() {
     const postText =
       'Posting grades is not allowed because grades have not been released for this assignment.'
-    return [...$container.querySelectorAll('p')].find($p => $p.textContent === postText)
+    return [...$container.querySelectorAll('div')].find($el => $el.textContent === postText)
   }
 
-  function getPostType(type) {
-    return document.getElementById(getLabel(type).htmlFor)
+  function layoutProps({assignment, ...props} = {}) {
+    return {
+      assignment: {
+        anonymousGrading: false,
+        gradesPublished: true,
+        ...assignment
+      },
+      dismiss() {},
+      postBySections: true,
+      postBySectionsChanged() {},
+      postingGrades: false,
+      postType: EVERYONE,
+      postTypeChanged() {},
+      onPostClick() {},
+      sections: [{id: '2001', name: 'Freshmen'}, {id: '2002', name: 'Sophomores'}],
+      sectionSelectionChanged() {},
+      selectedSectionIds: [],
+      unpostedCount: 0,
+      ...props
+    }
   }
 
-  function mountComponent() {
-    ReactDOM.render(<Layout {...context} />, $container)
+  function mountComponent(props = {}) {
+    ReactDOM.render(<Layout {...layoutProps(props)} />, $container)
   }
 
   suiteHooks.beforeEach(() => {
     $container = document.body.appendChild(document.createElement('div'))
-    context = {
-      assignment: assignmentFixture(),
-      dismiss: () => {},
-      postBySections: true,
-      postBySectionsChanged: () => {},
-      postingGrades: false,
-      postType: EVERYONE,
-      postTypeChanged: () => {},
-      onPostClick: () => {},
-      sections: [{id: '2001', name: 'Freshmen'}, {id: '2002', name: 'Sophomores'}],
-      sectionSelectionChanged: () => {},
-      selectedSectionIds: []
-    }
   })
 
   suiteHooks.afterEach(() => {
@@ -94,82 +83,81 @@ QUnit.module('PostAssignmentGradesTray Layout', suiteHooks => {
     $container.remove()
   })
 
-  test('clicking "Close" button calls the dismiss prop', () => {
-    const dismissSpy = sinon.spy()
-    context.dismiss = dismissSpy
+  test('header is present', () => {
     mountComponent()
-    getCloseButton().click()
-    strictEqual(dismissSpy.callCount, 1)
+    ok(getHeader())
   })
 
-  test('"Post" button is disabled when grades have yet to be published', () => {
-    const unpublishedAssignment = {...assignmentFixture(), gradesPublished: false}
-    context.assignment = unpublishedAssignment
-    mountComponent()
-    strictEqual(getPostButton().disabled, true)
-  })
-
-  test('descriptive text exists when grades have yet to be published', () => {
-    const unpublishedAssignment = {...assignmentFixture(), gradesPublished: false}
-    context.assignment = unpublishedAssignment
-    mountComponent()
-    ok(getPostText())
-  })
-
-  test('"Post" button is disabled when postingGrades is true', () => {
-    context.postingGrades = true
-    mountComponent()
-    strictEqual(getPostButton().disabled, true)
-  })
-
-  test('descriptive text does not exist when grades have been published', () => {
-    mountComponent()
-    notOk(getPostText())
-  })
-
-  test('clicking "Post" button calls the onPostClick prop', () => {
-    const onPostClickSpy = sinon.spy()
-    context.onPostClick = onPostClickSpy
-    mountComponent()
-    getPostButton().click()
-    strictEqual(onPostClickSpy.callCount, 1)
-  })
-
-  QUnit.module('when no sections exist', contextHooks => {
-    contextHooks.beforeEach(() => {
-      context.sections = []
+  QUnit.module('"Unrelease grades" message behavior', () => {
+    test('when "gradesPublished" is false, unreleased grades message is present', () => {
+      mountComponent({assignment: {gradesPublished: false}})
+      ok(getUnreleasedGradesAlertText())
     })
 
-    test('anonymous descriptive text is not shown', () => {
-      context.assignment = {...assignmentFixture(), anonymizeStudents: true}
-      mountComponent()
+    test('when "gradesPublished" is true, unreleased grades message is hidden', () => {
+      mountComponent({assignment: {gradesPublished: true}})
+      notOk(getUnreleasedGradesAlertText())
+    })
+  })
+
+  QUnit.module('"will refresh your browser" text behavior', contextHooks => {
+    let assignment
+    let containerName
+
+    contextHooks.beforeEach(() => {
+      assignment = {anonymousGrading: true, gradesPublished: true}
+      containerName = 'SPEED_GRADER'
+    })
+
+    test('when gradesPublished and anonymousGrading are true, and containerName is SPEED_GRADER, refresh text is present', () => {
+      mountComponent({assignment, containerName})
+      ok(getRefreshText())
+    })
+
+    test('when gradesPublished is false, refresh text is not present', () => {
+      assignment.gradesPublished = false
+      mountComponent({assignment, containerName})
+      notOk(getRefreshText())
+    })
+
+    test('when anonymousGrading is false, refresh text is not present', () => {
+      assignment.anonymousGrading = false
+      mountComponent({assignment, containerName})
+      notOk(getRefreshText())
+    })
+
+    test('when containerName is not SPEED_GRADER, refresh text is not present', () => {
+      containerName = 'NOT_SPEED_GRADER'
+      mountComponent({assignment, containerName})
+      notOk(getRefreshText())
+    })
+  })
+
+  QUnit.module('"Post for everyone when assignment is anonymous" text behavior', contextHooks => {
+    let assignment
+
+    contextHooks.beforeEach(() => {
+      assignment = {
+        gradesPublished: true,
+        anonymousGrading: true
+      }
+    })
+
+    test('when "gradesPublished" and "anonymousGrading" are true, anonymous descriptive text is present', () => {
+      mountComponent({assignment})
+      ok(getAnonymousText())
+    })
+
+    test('when "gradesPublished" is false, anonymous descriptive text is hidden', () => {
+      assignment.gradesPublished = false
+      mountComponent({assignment})
       notOk(getAnonymousText())
     })
 
-    test('section toggle is not shown', () => {
-      mountComponent()
-      notOk(getLabel('Specific Sections'))
-    })
-
-    test('sections are not shown', () => {
-      context.postBySections = false
-      mountComponent()
-      notOk(getLabel('Sophomores'))
-    })
-  })
-
-  QUnit.module('PostTypes', () => {
-    test('"Everyone" is checked by default', () => {
-      mountComponent()
-      strictEqual(getPostType('Everyone').checked, true)
-    })
-
-    test('clicking another post type calls postTypeChanged', () => {
-      const postTypeChangedSpy = sinon.spy()
-      context.postTypeChanged = postTypeChangedSpy
-      mountComponent()
-      getPostType('Graded').click()
-      strictEqual(postTypeChangedSpy.callCount, 1)
+    test('when "anonymousGrading" is false, anonymous descriptive text is hidden', () => {
+      assignment.anonymousGrading = false
+      mountComponent({assignment})
+      notOk(getAnonymousText())
     })
   })
 })

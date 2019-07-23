@@ -54,7 +54,7 @@ module Api::V1::User
         include_root_account = @domain_root_account.trust_exists?
         course_or_section = @context if (@context.is_a?(Course) || @context.is_a?(CourseSection))
         sis_context = enrollment || course_or_section || @domain_root_account
-        pseudonym = SisPseudonym.for(user, sis_context, type: :implicit, require_sis: false, root_account: @domain_root_account)
+        pseudonym = SisPseudonym.for(user, sis_context, type: :implicit, require_sis: false, root_account: @domain_root_account, in_region: true)
         enrollment_json_opts[:sis_pseudonym] = pseudonym if pseudonym&.sis_user_id
         # the sis fields on pseudonym are poorly named -- sis_user_id is
         # the id in the SIS import data, where on every other table
@@ -267,8 +267,7 @@ module Api::V1::User
         json[:sis_user_id] = pseudonym.try(:sis_user_id)
       end
       json[:html_url] = course_user_url(enrollment.course_id, enrollment.user_id)
-      user_includes = includes.include?('avatar_url') ? ['avatar_url'] : []
-      user_includes << 'group_ids' if includes.include?('group_ids')
+      user_includes = includes & %w{avatar_url group_ids uuid}
 
       json[:user] = user_json(enrollment.user, user, session, user_includes, @context, nil, []) if includes.include?(:user)
       if includes.include?('locked')
