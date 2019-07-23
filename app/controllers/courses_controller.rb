@@ -1274,6 +1274,8 @@ class CoursesController < ApplicationController
           enabled: Canvas::Plugin.find(:app_center).enabled?
         },
         LTI_LAUNCH_URL: course_tool_proxy_registration_path(@context),
+        EXTERNAL_TOOLS_CREATE_URL: url_for(controller: :external_tools, action: :create, course_id: @context.id),
+        TOOL_CONFIGURATION_SHOW_URL: course_show_tool_configuration_url(course_id: @context.id, developer_key_id: ':developer_key_id'),
         MEMBERSHIP_SERVICE_FEATURE_FLAG_ENABLED: @context.root_account.feature_enabled?(:membership_service_for_lti_tools),
         LTI_13_TOOLS_FEATURE_FLAG_ENABLED: @context.root_account.feature_enabled?(:lti_1_3),
         CONTEXT_BASE_URL: "/courses/#{@context.id}",
@@ -1380,6 +1382,29 @@ class CoursesController < ApplicationController
         render :json => @course.errors, :status => :bad_request
       end
     end
+  end
+
+  def observer_pairing_codes_csv
+    get_context
+    return render_unauthorized_action unless @context.root_account.self_registration? && @context.grants_right?(@current_user, :generate_observer_pairing_code)
+    res = CSV.generate do |csv|
+      csv << [
+        I18n.t('Last Name'),
+        I18n.t('First Name'),
+        I18n.t('Pairing Code'),
+        I18n.t('Expires At'),
+      ]
+      @context.students.each do |u|
+        opc = ObserverPairingCode.create(user: u, expires_at: 1.week.from_now, code: SecureRandom.hex(3))
+        row = []
+        row << opc.user.last_name
+        row << opc.user.first_name
+        row << '="' + opc.code + '"'
+        row << opc.expires_at
+        csv << row
+      end
+    end
+    send_data res, type: 'text/csv', filename: "#{@context.course_code}_Pairing_Codes.csv"
   end
 
   def update_nav
@@ -2841,7 +2866,7 @@ class CoursesController < ApplicationController
       pg_scope.delete_all
       OriginalityReport.where(:submission_id => @fake_student.all_submissions).delete_all
       AnonymousOrModerationEvent.where(submission: @fake_student.all_submissions).destroy_all
-      @fake_student.all_submissions.preload(:all_submission_comments, :lti_result, :versions).destroy_all
+      @fake_student.all_submissions.preload(:all_submission_comments, :submission_drafts, :lti_result, :versions).destroy_all
       @fake_student.quiz_submissions.each{|qs| qs.events.destroy_all}
       @fake_student.quiz_submissions.destroy_all
 

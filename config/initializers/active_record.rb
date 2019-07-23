@@ -189,7 +189,7 @@ class ActiveRecord::Base
 
   # little helper to keep checks concise and avoid a db lookup
   def has_asset?(asset, field = :context)
-    asset.id == send("#{field}_id") && asset.class.base_class.name == send("#{field}_type")
+    asset&.id == send("#{field}_id") && asset.class.base_class.name == send("#{field}_type")
   end
 
   def context_string(field = :context)
@@ -1301,7 +1301,7 @@ ActiveRecord::Associations::HasOneAssociation.class_eval do
 end
 
 class ActiveRecord::Migration
-  VALID_TAGS = [:predeploy, :postdeploy, :cassandra]
+  VALID_TAGS = [:predeploy, :postdeploy, :cassandra, :dynamodb]
   # at least one of these tags is required
   DEPLOY_TAGS = [:predeploy, :postdeploy]
 
@@ -1705,3 +1705,7 @@ if CANVAS_RAILS5_1
 
   ActiveRecord::Relation.prepend(EnforceRawSqlWhitelist)
 end
+
+ActiveRecord::Base.prepend(Canvas::CacheRegister::ActiveRecord::Base)
+ActiveRecord::Base.singleton_class.prepend(Canvas::CacheRegister::ActiveRecord::Base::ClassMethods)
+ActiveRecord::Relation.prepend(Canvas::CacheRegister::ActiveRecord::Relation)

@@ -16,7 +16,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import I18n from 'i18n!editor'
+import I18n from 'i18n!ExternalToolsPlugin'
 import $ from 'jquery'
 import htmlEscape from '../../str/htmlEscape'
 import ExternalToolsHelper from './ExternalToolsHelper'
@@ -40,7 +40,7 @@ const ExternalToolsPlugin = {
       // if somehow open gets called early, keep trying until it is ready
       open: (...args) => setTimeout(() => dialog.open(...args), 50)
     }
-    import('jsx/editor/ExternalToolDialog').then(ExternalToolDialog => {
+    import('jsx/editor/ExternalToolDialog').then(({default: ExternalToolDialog}) => {
       const dialogContainer = document.createElement('div')
       document.body.appendChild(dialogContainer)
       ReactDOM.render(
@@ -60,23 +60,35 @@ const ExternalToolsPlugin = {
     })
 
     const clumpedButtons = []
+    const ltiButtons = []
     for (let idx = 0; _INST.editorButtons && idx < _INST.editorButtons.length; idx++) {
       const current_button = _INST.editorButtons[idx]
-      if (
+      // eslint-disable-next-line no-loop-func
+      const openDialog = () => dialog.open(current_button)
+      if (ENV.use_rce_enhancements) {
+        ltiButtons.push(ExternalToolsHelper.buttonConfig(current_button, ed))
+        ed.addCommand(`instructureExternalButton${current_button.id}`, openDialog)
+      } else if (
         _INST.editorButtons.length > _INST.maxVisibleEditorButtons &&
         idx >= _INST.maxVisibleEditorButtons - 1
       ) {
         clumpedButtons.push(current_button)
       } else {
-        // eslint-disable-next-line no-loop-func
-        ed.addCommand(`instructureExternalButton${current_button.id}`, () => {
-          dialog.open(current_button)
-        })
-        ;(ENV.use_rce_enhancements ? ed.ui.registry : ed).addButton(
+        ed.addCommand(`instructureExternalButton${current_button.id}`, openDialog)
+        ed.addButton(
           `instructure_external_button_${current_button.id}`,
           ExternalToolsHelper.buttonConfig(current_button, ed)
         )
       }
+    }
+    if (ltiButtons.length && ENV.use_rce_enhancements) {
+      ed.ui.registry.addMenuButton('lti_tool_dropdown', {
+        fetch(callback) {
+          callback(ltiButtons)
+        },
+        icon: 'lti',
+        tooltip: 'LTI Tools'
+      })
     }
     if (clumpedButtons.length) {
       const handleClick = function() {

@@ -74,6 +74,7 @@ QUnit.module('GradebookGrid AssignmentColumnHeaderRenderer', suiteHooks => {
       name: 'Math Assignment',
       omit_from_final_grade: false,
       only_visible_to_overrides: false,
+      post_manually: false,
       published: true,
       submission_types: ['online_text_entry']
     }
@@ -86,7 +87,8 @@ QUnit.module('GradebookGrid AssignmentColumnHeaderRenderer', suiteHooks => {
       posted_at: null,
       score: null,
       submitted_at: null,
-      user_id: '441'
+      user_id: '441',
+      workflow_state: 'unsubmitted'
     }
 
     student = {
@@ -94,7 +96,8 @@ QUnit.module('GradebookGrid AssignmentColumnHeaderRenderer', suiteHooks => {
       assignment_2301: submission,
       isInactive: false,
       name: 'Guy B. Studying',
-      enrollments: [{type: 'StudentEnrollment', user_id: '441', course_section_id: '1'}]
+      enrollments: [{type: 'StudentEnrollment', user_id: '441', course_section_id: '1'}],
+      sortable_name: 'Studying, Guy B.'
     }
 
     gradebook.gotAllAssignmentGroups([
@@ -192,6 +195,13 @@ QUnit.module('GradebookGrid AssignmentColumnHeaderRenderer', suiteHooks => {
       buildGradebook()
       render()
       deepEqual(component.props.assignment.submissionTypes, ['online_text_entry'])
+    })
+
+    test('includes the assignment post manually property', () => {
+      buildGradebook()
+      assignment.post_manually = true
+      render()
+      strictEqual(component.props.assignment.postManually, true)
     })
 
     test('includes the curve grades action', () => {
@@ -352,7 +362,9 @@ QUnit.module('GradebookGrid AssignmentColumnHeaderRenderer', suiteHooks => {
           strictEqual(component.props.postGradesAction.featureEnabled, true)
         })
 
-        test('sets hasGradesToPost to true if at least one submission has no posted_at date', () => {
+        test('sets hasGradesToPost to true if at least one graded submission has no posted_at date', () => {
+          submission.workflow_state = 'graded'
+          submission.score = 1
           gradebook.gotChunkOfStudents([student])
           render()
           strictEqual(component.props.postGradesAction.hasGradesToPost, true)

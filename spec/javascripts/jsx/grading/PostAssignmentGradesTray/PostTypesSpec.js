@@ -27,12 +27,24 @@ QUnit.module('PostAssignmentGradesTray PostTypes', suiteHooks => {
 
   function getLabel(text) {
     return [...$container.querySelectorAll('label')].find($label =>
-      $label.textContent.includes(text)
+      $label.textContent === text
     )
   }
 
-  function getPostType(type) {
-    return document.getElementById(getLabel(type).htmlFor)
+  function getGradedPostType() {
+    const labelText = 'GradedGrades will be made visible to students with graded submissions'
+    return document.getElementById(getLabel(labelText).htmlFor)
+  }
+
+  function getEveryonePostType() {
+    const labelText = 'EveryoneGrades will be made visible to all students'
+    return document.getElementById(getLabel(labelText).htmlFor)
+  }
+
+  function getPostTypeInputs() {
+    const inputs = $container.querySelectorAll('input[type=radio]')
+    if (inputs.length === 0) return undefined
+    return [...inputs]
   }
 
   function mountComponent() {
@@ -42,7 +54,9 @@ QUnit.module('PostAssignmentGradesTray PostTypes', suiteHooks => {
   suiteHooks.beforeEach(() => {
     $container = document.body.appendChild(document.createElement('div'))
     context = {
+      anonymousGrading: false,
       defaultValue: 'everyone',
+      disabled: false,
       postTypeChanged: () => {}
     }
   })
@@ -54,27 +68,55 @@ QUnit.module('PostAssignmentGradesTray PostTypes', suiteHooks => {
 
   test('"Everyone" type includes description"', () => {
     mountComponent()
-    const labelText = 'Everyone\nGrades will be made visible to all students'
-    strictEqual(getLabel('Everyone').innerText, labelText)
+    const labelText = 'EveryoneGrades will be made visible to all students'
+    ok(getLabel(labelText))
   })
 
   test('"Graded" type includes description"', () => {
     mountComponent()
-    const labelText = 'Graded\nGrades will be made visible to students with graded submissions'
-    strictEqual(getLabel('Graded').innerText, labelText)
+    const labelText = 'GradedGrades will be made visible to students with graded submissions'
+    ok(getLabel(labelText))
   })
 
   test('the defaultValue is selected', () => {
     context.defaultValue = 'graded'
     mountComponent()
-    strictEqual(getPostType('graded').checked, true)
+    strictEqual(getGradedPostType().checked, true)
   })
 
   test('selecting another type calls postTypeChanged', () => {
     const postTypeChangedSpy = sinon.spy()
     context.postTypeChanged = postTypeChangedSpy
     mountComponent()
-    getPostType('graded').click()
+    getGradedPostType().click()
     strictEqual(postTypeChangedSpy.callCount, 1)
+  })
+
+  QUnit.module('anonymousGrading prop', () => {
+    test('anonymousGrading forces EVERYONE type', () => {
+      context.anonymousGrading = true
+      context.defaultValue = 'graded'
+      mountComponent()
+      strictEqual(getEveryonePostType().checked, true)
+    })
+
+    test('anonymousGrading disables GRADED type', () => {
+      context.anonymousGrading = true
+      mountComponent()
+      strictEqual(getGradedPostType().disabled, true)
+    })
+  })
+
+  QUnit.module('"disabled" prop', () => {
+    test('inputs are enabled when false', () => {
+      mountComponent()
+      strictEqual(getPostTypeInputs().every($input => !$input.disabled), true)
+    })
+
+    test('inputs are disabled when true', () => {
+      context.disabled = true
+      mountComponent()
+      strictEqual(getPostTypeInputs().every($input => $input.disabled), true)
+    })
   })
 })

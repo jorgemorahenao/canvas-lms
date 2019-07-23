@@ -18,7 +18,7 @@
 if CANVAS_RAILS5_1
   gem 'rails', '5.1.6.2'
 else
-  gem 'rails', '5.2.2.1'
+  gem 'rails', '5.2.3'
 end
     gem 'loofah', '2.2.3'
 
@@ -37,7 +37,7 @@ gem 'active_model_serializers',   '0.9.0alpha1',
 gem 'authlogic', '4.0.1'
   gem 'scrypt', '3.0.6'
 gem 'active_model-better_errors', '1.6.7', require: 'active_model/better_errors'
-gem 'switchman', '1.13.0'
+gem 'switchman', '1.13.2'
   gem 'open4', '1.3.4', require: false
 gem 'folio-pagination', '0.0.12', require: 'folio/rails'
   # for folio, see the folio README
@@ -45,6 +45,7 @@ gem 'folio-pagination', '0.0.12', require: 'folio/rails'
 
 gem 'addressable', '2.5.2', require: false
 gem "after_transaction_commit", '2.0.0'
+gem "aws-sdk-dynamodb", "1.5.0"
 gem "aws-sdk-kinesis", '1.6.0', require: false
 gem "aws-sdk-s3", '1.19.0', require: false
 gem "aws-sdk-sns", '1.5.0', require: false
@@ -86,6 +87,7 @@ gem 'ims-lti', '2.2.3', require: 'ims'
 gem 'json_schemer', '0.1.7'
 gem 'simple_oauth', '0.3.1', require: false
 gem 'json', '2.2.0'
+gem 'link_header', '0.0.8'
 gem 'oj', '3.3.9'
 gem 'jwt', '1.5.6', require: false
 gem 'json-jwt', '1.9.4', require: false
@@ -114,12 +116,12 @@ gem 'ruby-duration', '3.2.3', require: false
 gem 'saml2', '3.0.7'
   gem 'nokogiri-xmlsec-instructure', '0.9.6', require: false
 gem 'rubycas-client', '2.3.9', require: false
-gem 'rubyzip', '1.2.1', require: 'zip'
+gem 'rubyzip', '1.2.2', require: 'zip'
 gem 'safe_yaml', '1.0.4', require: false
 gem 'sanitize', '2.1.1', require: false
 gem 'shackles', '1.4.1'
 
-gem 'useragent', '0.16.10', require: false
+gem 'browser', '2.5.3', require: false
 
 gem 'crocodoc-ruby', '0.0.1', require: false
 gem 'sentry-raven', '2.7.2', require: false
@@ -147,6 +149,7 @@ gem 'broadcast_policy', path: "gems/broadcast_policy"
 gem 'canvas_breach_mitigation', path: 'gems/canvas_breach_mitigation'
 gem 'canvas_color', path: 'gems/canvas_color'
 gem 'canvas_crummy', path: 'gems/canvas_crummy'
+gem "canvas_dynamodb", path: "gems/canvas_dynamodb"
 gem 'canvas_ext', path: 'gems/canvas_ext'
 gem 'canvas_http', path: 'gems/canvas_http'
 gem 'canvas_kaltura', path: 'gems/canvas_kaltura'

@@ -18,18 +18,31 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom'
+import formatMessage from '../../../format-message'
 
-export default function(ed, document) {
-  return import('./UploadImage').then(({UploadImage}) => {
-    let container = document.querySelector('.canvas-rce-image-upload')
+export default function(ed, document, trayProps) {
+  return import('../shared/Upload/UploadFile').then(({UploadFile}) => {
+    let container = document.querySelector('.canvas-rce-upload-container')
     if (!container) {
       container = document.createElement('div')
-      container.className = 'canvas-rce-image-upload'
+      container.className = 'canvas-rce-upload-container'
       document.body.appendChild(container)
     }
 
-    const handleDismiss = () => ReactDOM.unmountComponentAtNode(container)
+    const handleDismiss = () => {
+      ReactDOM.unmountComponentAtNode(container)
+      ed.focus(false)
+    }
 
-    ReactDOM.render(<UploadImage onDismiss={handleDismiss} />, container)
+    ReactDOM.render(
+      <UploadFile
+        accept="image/*"
+        editor={ed}
+        label={formatMessage('Upload Image')}
+        panels={['COMPUTER', 'UNSPLASH', 'URL']}
+        onDismiss={handleDismiss}
+        trayProps={trayProps}
+      />, container
+    )
   })
 }

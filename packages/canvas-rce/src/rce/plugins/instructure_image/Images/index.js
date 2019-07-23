@@ -16,25 +16,71 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import React from 'react'
+import React, {useRef} from 'react'
+import {arrayOf, bool, func, shape} from 'prop-types'
+import {Flex} from '@instructure/ui-layout'
 
-import formatMessage from '../../../../format-message'
+import {
+  LoadMoreButton,
+  LoadingIndicator,
+  LoadingStatus,
+  useIncrementalLoading
+} from '../../../../common/incremental-loading'
+import Image from '../ImageList/Image'
 import ImageList from '../ImageList'
 
 export default function Images(props) {
-  return (
-    <div>
-      <p>{formatMessage('Click any image to embed the image in the page.')}</p>
+  const {fetchImages, images} = props
+  const {hasMore, isLoading, records} = images
+  const lastItemRef = useRef(null)
 
-      <ImageList
-        fetchImages={props.fetchImages}
-        images={props.images}
-        onImageEmbed={props.onImageEmbed}
-      />
-    </div>
+  const loader = useIncrementalLoading({
+    hasMore,
+    isLoading,
+    lastItemRef,
+
+    onLoadInitial() {
+      fetchImages({calledFromRender: true})
+    },
+
+    onLoadMore() {
+      fetchImages({calledFromRender: false})
+    },
+
+    records
+  })
+
+  return (
+    <>
+      <Flex alignItems="center" direction="column" justifyItems="space-between" height="100%">
+        <Flex.Item overflowY="visible" width="100%">
+          <ImageList images={records} lastItemRef={lastItemRef} onImageClick={props.onImageEmbed} />
+        </Flex.Item>
+
+        {loader.isLoading && (
+          <Flex.Item as="div" grow>
+            <LoadingIndicator loader={loader} />
+          </Flex.Item>
+        )}
+
+        {!loader.isLoading && loader.hasMore && (
+          <Flex.Item as="div" margin="small">
+            <LoadMoreButton loader={loader} />
+          </Flex.Item>
+        )}
+      </Flex>
+
+      <LoadingStatus loader={loader} />
+    </>
   )
 }
 
 Images.propTypes = {
-  ...ImageList.propTypes
+  fetchImages: func.isRequired,
+  images: shape({
+    hasMore: bool.isRequired,
+    isLoading: bool.isRequired,
+    records: arrayOf(Image.propTypes.image).isRequired
+  }),
+  onImageEmbed: func.isRequired
 }

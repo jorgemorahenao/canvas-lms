@@ -111,16 +111,16 @@ export const TEACHER_QUERY = gql`
             __typename
             ... on Section {
               lid: _id
-              name
+              sectionName: name
             }
             ... on Group {
               lid: _id
-              name
+              groupName: name
             }
             ... on AdhocStudents {
               students {
                 lid: _id
-                name
+                studentName: name
               }
             }
           }
@@ -138,6 +138,7 @@ export const TEACHER_QUERY = gql`
         nodes {
           gid: id
           lid: _id
+          attempt
           submissionStatus
           grade
           gradingStatus
@@ -158,6 +159,7 @@ export const TEACHER_QUERY = gql`
 
 const assignmentGroup = gql`
   fragment CourseAssignmentGroups on AssignmentGroupConnection {
+    __typename
     nodes {
       lid: _id
       gid: id
@@ -198,6 +200,7 @@ export const COURSE_ASSIGNMENT_GROUPS_QUERY_LOCAL = gql`
 
 const assignmentModule = gql`
   fragment CourseModules on ModuleConnection {
+    __typename
     nodes {
       lid: _id
       gid: id
@@ -258,11 +261,26 @@ export const STUDENT_SEARCH_QUERY = gql`
         nodes {
           lid: _id
           gid: id
+          attempt
+          excused
           state
           score
           submittedAt
+          submissionDraft {
+            submissionAttempt
+          }
+          submissionStatus
           user {
             ...UserFields
+          }
+          submissionHistories: submissionHistoriesConnection(
+            filter: {states: [graded, pending_review, submitted, ungraded]}
+          ) {
+            nodes {
+              attempt
+              score
+              submittedAt
+            }
           }
         }
       }
@@ -350,7 +368,7 @@ export const OverrideShape = shape({
   dueAt: string,
   lockAt: string,
   unlockAt: string,
-  submissionTypes: arrayOf(string), // currently copied from the asisgnment
+  submissionTypes: arrayOf(string), // currently copied from the assignment
   allowedAttempts: number, // currently copied from the assignment
   allowedExtensions: arrayOf(string), // currently copied from the assignment
   set: shape({
@@ -370,9 +388,20 @@ export const UserShape = shape({
   email: string
 })
 
+export const SubmissionHistoryShape = shape({
+  attempt: number,
+  score: number,
+  submittedAt: string
+})
+
+export const SubmissionDraftShape = shape({
+  submissionAttempt: string
+})
+
 export const SubmissionShape = shape({
   gid: string,
   lid: string,
+  attempt: number,
   submissionStatus: oneOf(['resubmitted', 'missing', 'late', 'submitted', 'unsubmitted']),
   grade: string,
   gradingStatus: oneOf([null, 'excused', 'needs_review', 'needs_grading', 'graded']),
@@ -381,7 +410,11 @@ export const SubmissionShape = shape({
   excused: bool,
   latePolicyStatus: oneOf([null, 'missing']),
   submittedAt: string, // datetime
-  user: UserShape
+  user: UserShape,
+  submissionHistoriesConnection: shape({
+    nodes: arrayOf(SubmissionHistoryShape)
+  }),
+  submissionDraft: SubmissionDraftShape
 })
 
 export const TeacherAssignmentShape = shape({
@@ -399,6 +432,7 @@ export const TeacherAssignmentShape = shape({
   lockInfo: LockInfoShape.isRequired,
   submissionTypes: arrayOf(string).isRequired,
   allowedExtensions: arrayOf(string).isRequired,
+  allowedAttempts: number,
   assignmentOverrides: shape({
     nodes: arrayOf(OverrideShape)
   }).isRequired,

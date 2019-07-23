@@ -121,7 +121,7 @@ class SisBatch < ActiveRecord::Base
     # Try to have 100 jobs but don't have a job that processes less than 25
     # rows but also not more than 1000 rows.
     # Progress is calculated on the number of jobs remaining.
-    [[(rows/100.to_f).ceil, 25].max, 1000].min
+    [[(rows/99.to_f).ceil, 25].max, 1000].min
   end
 
   workflow do
@@ -513,15 +513,17 @@ class SisBatch < ActiveRecord::Base
 
   def remove_non_batch_courses(courses, total_rows, current_row)
     # delete courses that weren't in this batch, in the selected term
+    course_count = 0
     current_row ||= 0
     courses.find_in_batches do |batch|
       count = Course.destroy_batch(batch, sis_batch: self, batch_mode: true)
       finish_course_destroy(batch)
       current_row += count
+      course_count += count
       self.fast_update_progress(current_row.to_f / total_rows * 100)
     end
 
-    self.data[:counts][:batch_courses_deleted] = current_row
+    self.data[:counts][:batch_courses_deleted] = course_count
     current_row
   end
 
@@ -898,15 +900,30 @@ class SisBatch < ActiveRecord::Base
     end
   end
 
-  def downloadable_attachments
-    @downloadable_attachments ||=
-      begin
-        ids = data[:downloadable_attachment_ids]
-        if ids.present?
-          self.shard.activate { Attachment.where(:id => ids).polymorphic_where(:context => self).to_a }
-        else
-          []
+  def downloadable_attachments(type=:all)
+    return [] unless data
+    self.shard.activate do
+      @downloadable_attachments ||=
+        begin
+          ids = data[:downloadable_attachment_ids]
+          if ids.present?
+            Attachment.where(:id => ids).polymorphic_where(:context => self).to_a
+          else
+            []
+          end
         end
+
+      diff_att_ids = data[:diffed_attachment_ids] || []
+      case type
+      when :all
+        @downloadable_attachments
+      when :uploaded
+        @downloadable_attachments.reject{|att| diff_att_ids.include?(att.id)}
+      when :diffed
+        @downloadable_attachments.select{|att| diff_att_ids.include?(att.id)}
+      else
+        raise "invalid attachment type"
       end
+    end
   end
 end

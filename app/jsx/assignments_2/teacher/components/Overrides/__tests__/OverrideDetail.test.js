@@ -46,9 +46,8 @@ describe('OverrideDetail', () => {
     expect(getByText('Due:')).toBeInTheDocument()
     expect(getByText('Available:')).toBeInTheDocument()
     expect(getByText('Until:')).toBeInTheDocument()
-    expect(getByText('Submission Type')).toBeInTheDocument()
+    expect(getByText('Submission Items')).toBeInTheDocument()
     expect(getByText('Attempts Allowed')).toBeInTheDocument()
-    expect(getByText('Score to keep')).toBeInTheDocument()
     // the sub-components
     expect(getByTestId('OverrideAssignTo')).toBeInTheDocument()
     expect(getByTestId('OverrideDates')).toBeInTheDocument()
@@ -68,9 +67,8 @@ describe('OverrideDetail', () => {
     expect(getByText('Due:')).toBeInTheDocument()
     expect(getByText('Available:')).toBeInTheDocument()
     expect(getByText('Until:')).toBeInTheDocument()
-    expect(getByText('Submission Type')).toBeInTheDocument()
+    expect(getByText('Submission Items')).toBeInTheDocument()
     expect(getByText('Attempts Allowed')).toBeInTheDocument()
-    expect(getByText('Score to keep')).toBeInTheDocument()
     // the sub-components
     expect(getByTestId('OverrideAssignTo')).toBeInTheDocument()
     expect(getByTestId('OverrideDates')).toBeInTheDocument()

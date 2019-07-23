@@ -27,14 +27,43 @@ import View from '@instructure/ui-layout/lib/components/View'
 
 import ManualConfigurationForm from './ManualConfigurationForm'
 
+const validationMessage = [{text: I18n.t('Json is not valid. Please submit properly formatted json.'), type: 'error'}]
+
 export default class ToolConfigurationForm extends React.Component {
+  state = {
+    invalidJson: null
+  }
+
   get toolConfiguration() {
+    if(this.state.invalidJson) {
+      return this.state.invalidJson
+    }
     const {toolConfiguration} = this.props
-    return toolConfiguration ? JSON.stringify(toolConfiguration) : ''
+    return toolConfiguration ? JSON.stringify(toolConfiguration, null, 4) : ''
   }
 
   generateToolConfiguration = () => {
     return this.manualConfigRef.generateToolConfiguration();
+  }
+
+  valid = () => {
+    return this.manualConfigRef.valid();
+  }
+
+  updatePastedJson = (value) => {
+    try {
+      const settings = JSON.parse(value.target.value)
+      this.props.updateToolConfiguration(settings)
+      this.setState({invalidJson: null})
+    } catch(e) {
+      if (e instanceof SyntaxError) {
+        this.setState({invalidJson: value.target.value})
+      }
+    }
+  }
+
+  updateToolConfigurationUrl = (e) => {
+    this.props.updateToolConfigurationUrl(e.target.value)
   }
 
   handleConfigTypeChange = (e, option) => {
@@ -48,15 +77,18 @@ export default class ToolConfigurationForm extends React.Component {
       return (
         <TextArea
           name="tool_configuration"
-          defaultValue={this.toolConfiguration}
+          value={this.toolConfiguration}
+          onChange={this.updatePastedJson}
           label={I18n.t('LTI 1.3 Configuration')}
           maxHeight="20rem"
+          messages={this.props.showRequiredMessages && this.state.invalidJson ? validationMessage : []}
         />
       )
     } else if (this.props.configurationMethod === 'manual') {
       return (
         <ManualConfigurationForm
           ref={this.setManualConfigRef}
+          toolConfiguration={this.props.toolConfiguration}
           validScopes={this.props.validScopes}
           validPlacements={this.props.validPlacements}
         />
@@ -65,10 +97,19 @@ export default class ToolConfigurationForm extends React.Component {
     return (
       <TextInput
         name="tool_configuration_url"
-        defaultValue={this.props.toolConfigurationUrl}
+        value={this.props.toolConfigurationUrl}
+        onChange={this.updateToolConfigurationUrl}
         label={I18n.t('JSON URL')}
       />
     )
+  }
+
+  renderOptions () {
+    return [
+      <option key="manual" value="manual">{I18n.t('Manual Entry')}</option>,
+      <option key="json" value="json">{I18n.t('Paste JSON')}</option>,
+      this.props.editing ? null : <option key="url" value="url">{I18n.t('Enter URL')}</option>
+    ].filter(o => !!o)
   }
 
   render() {
@@ -81,10 +122,9 @@ export default class ToolConfigurationForm extends React.Component {
           label="Method"
           assistiveText={I18n.t('3 options available. Use arrow keys to navigate options.')}
           onChange={this.handleConfigTypeChange}
+          selectedOption={this.props.configurationMethod}
         >
-          <option value="manual">{I18n.t('Manual Entry')}</option>
-          <option value="json">{I18n.t('Paste JSON')}</option>
-          <option value="url">{I18n.t('Enter URL')}</option>
+          {this.renderOptions()}
         </Select>
         <br />
         {this.configurationInput()}
@@ -100,7 +140,11 @@ ToolConfigurationForm.propTypes = {
   validScopes: PropTypes.object.isRequired,
   validPlacements: PropTypes.arrayOf(PropTypes.string).isRequired,
   setLtiConfigurationMethod: PropTypes.func.isRequired,
-  configurationMethod: PropTypes.string
+  configurationMethod: PropTypes.string,
+  editing: PropTypes.bool.isRequired,
+  showRequiredMessages: PropTypes.bool.isRequired,
+  updateToolConfiguration: PropTypes.func.isRequired,
+  updateToolConfigurationUrl: PropTypes.func.isRequired
 }
 
 ToolConfigurationForm.defaultProps = {

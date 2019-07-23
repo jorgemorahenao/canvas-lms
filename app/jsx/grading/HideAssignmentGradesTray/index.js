@@ -55,6 +55,7 @@ export default class HideAssignmentGradesTray extends PureComponent {
     this.state = {
       hideBySections: false,
       hidingGrades: false,
+      onExited() {},
       open: false,
       selectedSectionIds: []
     }
@@ -76,7 +77,7 @@ export default class HideAssignmentGradesTray extends PureComponent {
   }
 
   async onHideClick() {
-    const {assignment, selectedSectionIds} = this.state
+    const {assignment, containerName, selectedSectionIds} = this.state
     let hideRequest
     let successMessage
 
@@ -106,13 +107,17 @@ export default class HideAssignmentGradesTray extends PureComponent {
 
     try {
       const progress = await hideRequest
-      await resolveHideAssignmentGradesStatus(progress)
-      showFlashAlert({
-        message: successMessage,
-        type: 'success'
-      })
+      const hiddenSubmissionInfo = await resolveHideAssignmentGradesStatus(progress)
       this.dismiss()
-    } catch (error) {
+      this.state.onHidden(hiddenSubmissionInfo)
+
+      if (!assignment.anonymousGrading || containerName !== 'SPEED_GRADER') {
+        showFlashAlert({
+          message: successMessage,
+          type: 'success'
+        })
+      }
+    } catch (_error) {
       showFlashAlert({
         message: I18n.t('There was a problem hiding assignment grades.'),
         type: 'error'
@@ -140,7 +145,7 @@ export default class HideAssignmentGradesTray extends PureComponent {
       return null
     }
 
-    const {assignment, onExited, sections} = this.state
+    const {assignment, containerName, onExited, sections} = this.state
 
     return (
       <Tray
@@ -165,6 +170,7 @@ export default class HideAssignmentGradesTray extends PureComponent {
 
         <Layout
           assignment={assignment}
+          containerName={containerName}
           dismiss={this.dismiss}
           hideBySections={this.state.hideBySections}
           hideBySectionsChanged={this.hideBySectionsChanged}

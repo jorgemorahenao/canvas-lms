@@ -17,118 +17,93 @@
  */
 
 import React, {Fragment} from 'react'
-import {arrayOf, bool, func, shape, string} from 'prop-types'
-import Button from '@instructure/ui-buttons/lib/components/Button'
-import Flex, {FlexItem} from '@instructure/ui-layout/lib/components/Flex'
+import {any, arrayOf, bool, shape, string} from 'prop-types'
+
+import Alert from '@instructure/ui-alerts/lib/components/Alert'
+import FormFieldGroup from '@instructure/ui-form-field/lib/components/FormFieldGroup'
 import Heading from '@instructure/ui-elements/lib/components/Heading'
-import Text from '@instructure/ui-elements/lib/components/Text'
 import View from '@instructure/ui-layout/lib/components/View'
+
 import I18n from 'i18n!post_assignment_grades_tray'
 
-import PostTypes from './PostTypes'
-import SpecificSections from '../SpecificSections'
+import FormContent from './FormContent'
 
-export default function Layout(props) {
-  const {
-    assignment,
-    dismiss,
-    postBySections,
-    postBySectionsChanged,
-    postType,
-    postTypeChanged,
-    postingGrades,
-    onPostClick,
-    sections,
-    sectionSelectionChanged,
-    selectedSectionIds
-  } = props
-  const {anonymizeStudents, gradesPublished} = assignment
-  const hasSections = sections.length > 0
+export default function Layout({
+  assignment: {anonymousGrading, gradesPublished},
+  containerName,
+  dismiss,
+  onPostClick,
+  postBySections,
+  postBySectionsChanged,
+  postType,
+  postTypeChanged,
+  postingGrades,
+  sectionSelectionChanged,
+  sections,
+  selectedSectionIds,
+  unpostedCount
+}) {
 
   return (
     <Fragment>
-      <View as="div" margin="0 0 small" padding="0 medium">
-        <Heading as="h3" level="h4">
-          {I18n.t('Post Grades')}
-        </Heading>
-      </View>
-
-      <View as="div" margin="small 0" padding="0 medium">
-        <PostTypes defaultValue={postType} postTypeChanged={postTypeChanged} />
-      </View>
-
-      <View as="div" margin="0 medium" className="hr" />
-
-      {hasSections && anonymizeStudents && (
-        <View as="p" margin="small 0 small" padding="0 medium">
-          <Text>{I18n.t('Anonymous assignments cannot be posted by section.')}</Text>
-        </View>
-      )}
-
-      {hasSections && (
-        <SpecificSections
-          checked={postBySections}
-          disabled={assignment.anonymizeStudents}
-          onCheck={event => {
-            postBySectionsChanged(event.target.checked)
-          }}
-          sections={sections}
-          sectionSelectionChanged={sectionSelectionChanged}
-          selectedSectionIds={selectedSectionIds}
-        />
-      )}
-
-      <View as="div" margin="0 medium" className="hr" />
-
       {!gradesPublished && (
-        <View as="p" margin="small 0 small" padding="0 medium">
-          <Text>
-            {I18n.t(
-              'Posting grades is not allowed because grades have not been released for this assignment.'
-            )}
-          </Text>
-        </View>
+        <Alert margin="x-small" variant="warning">
+          {I18n.t(
+            'Posting grades is not allowed because grades have not been released for this assignment.'
+          )}
+        </Alert>
       )}
 
-      <View as="div" margin="medium 0 0" padding="0 medium">
-        <Flex justifyItems="end">
-          <FlexItem margin="0 small 0 0">
-            <Button onClick={dismiss}>{I18n.t('Close')}</Button>
-          </FlexItem>
+      {gradesPublished && anonymousGrading && containerName === 'SPEED_GRADER' && (
+        <Alert margin="x-small" variant="warning">
+          {I18n.t('Posting grades will refresh your browser. This may take a moment.')}
+        </Alert>
+      )}
 
-          <FlexItem>
-            <Button
-              disabled={postingGrades || !gradesPublished}
-              onClick={onPostClick}
-              variant="primary"
-            >
-              {I18n.t('Post')}
-            </Button>
-          </FlexItem>
-        </Flex>
-      </View>
+      {gradesPublished && anonymousGrading && (
+        <Alert margin="x-small" variant="info">
+          {I18n.t(
+            'Grades can only be posted to everyone when the assignment is anonymous. Anonymity will be removed.'
+          )}
+        </Alert>
+      )}
+
+      <FormFieldGroup
+        description={
+          <View as="div" margin="0" padding="0 medium">
+            <Heading as="h3" level="h4">
+              {I18n.t('Post Grades')}
+            </Heading>
+          </View>
+        }
+        label={I18n.t('Post Grades')}
+        disabled={!gradesPublished}
+      >
+        <FormContent
+          assignment={{anonymousGrading, gradesPublished}}
+          dismiss={dismiss}
+          onPostClick={onPostClick}
+          postBySections={postBySections}
+          postBySectionsChanged={postBySectionsChanged}
+          postType={postType}
+          postTypeChanged={postTypeChanged}
+          postingGrades={postingGrades}
+          sectionSelectionChanged={sectionSelectionChanged}
+          sections={sections}
+          selectedSectionIds={selectedSectionIds}
+          unpostedCount={unpostedCount}
+        />
+      </FormFieldGroup>
     </Fragment>
   )
 }
 
 Layout.propTypes = {
   assignment: shape({
-    anonymizeStudents: bool.isRequired,
+    anonymousGrading: bool.isRequired,
     gradesPublished: bool.isRequired
   }).isRequired,
-  dismiss: func.isRequired,
-  postBySections: bool.isRequired,
-  postBySectionsChanged: func.isRequired,
-  postingGrades: bool.isRequired,
-  postType: string.isRequired,
-  postTypeChanged: func.isRequired,
-  onPostClick: func.isRequired,
-  sections: arrayOf(
-    shape({
-      id: string.isRequired,
-      name: string.isRequired
-    })
-  ).isRequired,
-  sectionSelectionChanged: func.isRequired,
-  selectedSectionIds: arrayOf(string).isRequired
+  containerName: string,
+  sections: arrayOf(any).isRequired,
+  ...FormContent.propTypes
 }

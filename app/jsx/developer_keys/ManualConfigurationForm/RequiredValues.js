@@ -18,22 +18,53 @@
 import I18n from 'i18n!react_developer_keys'
 import PropTypes from 'prop-types'
 import React from 'react'
+import $ from 'jquery'
 
 import FormFieldGroup from '@instructure/ui-form-field/lib/components/FormFieldGroup';
 import TextInput from '@instructure/ui-forms/lib/components/TextInput';
 import TextArea from '@instructure/ui-forms/lib/components/TextArea';
 import ScreenReaderContent from '@instructure/ui-a11y/lib/components/ScreenReaderContent';
+import PresentationContent from '@instructure/ui-a11y/lib/components/PresentationContent'
+import Grid from '@instructure/ui-layout/lib/components/Grid';
+import GridRow from '@instructure/ui-layout/lib/components/Grid/GridRow';
+import GridCol from '@instructure/ui-layout/lib/components/Grid/GridCol';
+
+const validationMessage = [{text: I18n.t('Field cannot be blank.'), type: 'error'}]
 
 export default class RequiredValues extends React.Component {
   constructor (props) {
     super(props);
+    const public_jwk = JSON.stringify(this.props.toolConfiguration.public_jwk || {}, null, 4)
     this.state = {
-      toolConfiguration: this.props.toolConfiguration
+      toolConfiguration: {...this.props.toolConfiguration, public_jwk}
     }
   }
 
+  isMissingValues = () => {
+    return ['target_link_uri', 'oidc_initiation_url', 'public_jwk', 'description', 'title']
+      .some(p => !this.state.toolConfiguration[p])
+  }
+
   generateToolConfigurationPart = () => {
-    return this.state.toolConfiguration
+    const public_jwk = JSON.parse(this.state.toolConfiguration.public_jwk)
+
+    return { ...this.state.toolConfiguration, public_jwk }
+  }
+
+  valid = () => {
+    if (this.isMissingValues()) {
+      this.props.flashError(I18n.t('Missing required fields. Please fill in all required fields.'))
+      return false
+    }
+    try {
+      JSON.parse(this.state.toolConfiguration.public_jwk)
+      return true
+    } catch(e) {
+      if (e instanceof SyntaxError) {
+        this.props.flashError(I18n.t('Public JWK json is not valid. Please submit properly formatted json.'))
+        return false
+      }
+    }
   }
 
   handleTitleChange = e => {
@@ -63,62 +94,71 @@ export default class RequiredValues extends React.Component {
 
   render() {
     const { toolConfiguration } = this.state;
+    const { showMessages } = this.props
 
     return (
       <FormFieldGroup
         description={I18n.t("Required Values")}
       >
-        <hr />
-        <FormFieldGroup
-          description={<ScreenReaderContent>{I18n.t('Display Values')}</ScreenReaderContent>}
-          layout="columns"
-        >
-          <TextInput
-            name="title"
-            value={toolConfiguration.title}
-            label={I18n.t("Title")}
-            required
-            onChange={this.handleTitleChange}
-          />
-          <TextArea
-            name="description"
-            value={toolConfiguration.description}
-            label={I18n.t("Description")}
-            maxHeight="5rem"
-            required
-            onChange={this.handleDescriptionChange}
-          />
-        </FormFieldGroup>
-        <FormFieldGroup
-          description={<ScreenReaderContent>{I18n.t("Open Id Connect Values")}</ScreenReaderContent>}
-          layout="columns"
-        >
-          <TextInput
-            name="target_link_uri"
-            value={toolConfiguration.target_link_uri}
-            label={I18n.t("Target Link URI")}
-            required
-            onChange={this.handleTargetLinkUriChange}
-          />
-          <TextInput
-            name="oidc_initiation_url"
-            value={toolConfiguration.oidc_initiation_url}
-            label={I18n.t("OpenID Connect Initiation Url")}
-            required
-            onChange={this.handleOidcInitiationUrlChange}
-          />
-        </FormFieldGroup>
+        <PresentationContent>
+          <hr />
+        </PresentationContent>
+        <Grid>
+          <GridRow>
+            <GridCol>
+              <TextInput
+                name="title"
+                value={toolConfiguration.title}
+                label={I18n.t("* Title")}
+                onChange={this.handleTitleChange}
+                messages={showMessages && !toolConfiguration.title ? validationMessage : []}
+              />
+            </GridCol>
+            <GridCol>
+              <TextArea
+                name="description"
+                value={toolConfiguration.description}
+                label={I18n.t("* Description")}
+                maxHeight="5rem"
+                onChange={this.handleDescriptionChange}
+                messages={showMessages && !toolConfiguration.description ? validationMessage : []}
+              />
+            </GridCol>
+          </GridRow>
+          <GridRow>
+            <GridCol>
+              <TextInput
+                name="target_link_uri"
+                value={toolConfiguration.target_link_uri}
+                label={I18n.t("* Target Link URI")}
+                onChange={this.handleTargetLinkUriChange}
+                messages={showMessages && !toolConfiguration.target_link_uri ? validationMessage : []}
+              />
+            </GridCol>
+            <GridCol>
+              <TextInput
+                name="oidc_initiation_url"
+                value={toolConfiguration.oidc_initiation_url}
+                label={I18n.t("* OpenID Connect Initiation Url")}
+                onChange={this.handleOidcInitiationUrlChange}
+                messages={showMessages && !toolConfiguration.oidc_initiation_url ? validationMessage : []}
+              />
+            </GridCol>
+          </GridRow>
+        </Grid>
         <TextArea
           name="public_jwk"
           value={toolConfiguration.public_jwk}
-          label={I18n.t("Public JWK")}
+          label={I18n.t("* Public JWK")}
           maxHeight="10rem"
-          required
           resize="vertical"
           autoGrow
           onChange={this.handlePublicJwkChange}
+          messages={showMessages && !toolConfiguration.public_jwk ? validationMessage : []}
         />
-        <hr />
+        <PresentationContent>
+          <hr />
+        </PresentationContent>
       </FormFieldGroup>
     )
   }
@@ -131,5 +171,13 @@ RequiredValues.propTypes = {
     target_link_uri: PropTypes.string,
     oidc_initiation_url: PropTypes.string,
     public_jwk: PropTypes.string
-  })
+  }),
+  flashError: PropTypes.func,
+  showMessages: PropTypes.bool
+}
+
+RequiredValues.defaultProps = {
+  flashError: (msg) => {
+    $.flashError(msg)
+  }
 }

@@ -64,8 +64,9 @@ class Attachment < ActiveRecord::Base
   belongs_to :cloned_item
   belongs_to :folder
   belongs_to :user
-  has_one :account_report
+  has_one :account_report, inverse_of: :attachment
   has_one :media_object
+  has_many :submission_draft_attachments, inverse_of: :attachment
   has_many :submissions, -> { active }
   has_many :attachment_associations
   belongs_to :root_attachment, :class_name => 'Attachment'
@@ -1257,7 +1258,7 @@ class Attachment < ActiveRecord::Base
   def locked_for?(user, opts={})
     return false if opts[:check_policies] && self.grants_right?(user, :read_as_admin)
     return {:asset_string => self.asset_string, :manually_locked => true} if self.locked || Folder.is_locked?(self.folder_id)
-    Rails.cache.fetch(locked_cache_key(user), :expires_in => 1.minute) do
+    RequestCache.cache(locked_request_cache_key(user)) do
       locked = false
       if (self.unlock_at && Time.now < self.unlock_at)
         touch_on_unlock if Time.now + 1.hour >= self.unlock_at
@@ -1348,7 +1349,18 @@ class Attachment < ActiveRecord::Base
       AND (attachments.lock_at IS NULL OR attachments.lock_at>?)
       AND (attachments.unlock_at IS NULL OR attachments.unlock_at<?)", Time.now.utc, Time.now.utc)
   }
+
   scope :by_content_types, lambda { |types|
+    condition_sql = build_content_types_sql(types)
+    where(condition_sql)
+  }
+
+  scope :by_exclude_content_types, lambda { |types|
+    condition_sql = build_content_types_sql(types)
+    where.not(condition_sql)
+  }
+
+  def self.build_content_types_sql(types)
     clauses = []
     types.each do |type|
       if type.include? '/'
@@ -1358,8 +1370,7 @@ class Attachment < ActiveRecord::Base
       end
     end
     condition_sql = clauses.join(' OR ')
-    where(condition_sql)
-  }
+  end
 
   alias_method :destroy_permanently!, :destroy
   # file_state is like workflow_state, which was already taken

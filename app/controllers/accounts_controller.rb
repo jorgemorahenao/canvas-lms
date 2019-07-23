@@ -652,19 +652,23 @@ class AccountsController < ApplicationController
 
     page_opts = {}
     page_opts[:total_entries] = nil if params[:search_term] # doesn't calculate a total count
-    @courses = Api.paginate(@courses, self, api_v1_account_courses_url, page_opts)
 
-    ActiveRecord::Associations::Preloader.new.preload(@courses, [:account, :root_account, course_account_associations: :account])
-    preload_teachers(@courses) if includes.include?("teachers")
-    ActiveRecord::Associations::Preloader.new.preload(@courses, [:enrollment_term]) if includes.include?("term") || includes.include?('concluded')
+    all_precalculated_permissions = nil
+    Shackles.activate(:slave) do
+      @courses = Api.paginate(@courses, self, api_v1_account_courses_url, page_opts)
 
-    if includes.include?("total_students")
-      student_counts = StudentEnrollment.not_fake.where("enrollments.workflow_state NOT IN ('rejected', 'completed', 'deleted', 'inactive')").
-        where(:course_id => @courses).group(:course_id).distinct.count(:user_id)
-      @courses.each {|c| c.student_count = student_counts[c.id] || 0 }
+      ActiveRecord::Associations::Preloader.new.preload(@courses, [:account, :root_account, course_account_associations: :account])
+      preload_teachers(@courses) if includes.include?("teachers")
+      ActiveRecord::Associations::Preloader.new.preload(@courses, [:enrollment_term]) if includes.include?("term") || includes.include?('concluded')
+
+      if includes.include?("total_students")
+        student_counts = StudentEnrollment.not_fake.where("enrollments.workflow_state NOT IN ('rejected', 'completed', 'deleted', 'inactive')").
+          where(:course_id => @courses).group(:course_id).distinct.count(:user_id)
+        @courses.each {|c| c.student_count = student_counts[c.id] || 0 }
+      end
+      all_precalculated_permissions = @current_user.precalculate_permissions_for_courses(@courses, [:read_sis, :manage_sis])
     end
 
-    all_precalculated_permissions = @current_user.precalculate_permissions_for_courses(@courses, [:read_sis, :manage_sis])
     render :json => @courses.map { |c| course_json(c, @current_user, session, includes, nil,
       precalculated_permissions: all_precalculated_permissions&.dig(c.global_id)) }
   end
@@ -839,7 +843,7 @@ class AccountsController < ApplicationController
             hash.assert_valid_keys ["text", "subtext", "url", "available_to", "type", "id"]
             hash
           end
-          @account.settings[:custom_help_links] = Account::HelpLinks.process_links_before_save(sorted_help_links)
+          @account.settings[:custom_help_links] = @account.help_links_builder.process_links_before_save(sorted_help_links)
           @account.settings[:new_custom_help_links] = true
         end
 
@@ -879,6 +883,7 @@ class AccountsController < ApplicationController
             # these shouldn't get set for the site admin account
             params[:account][:settings].delete(:enable_alerts)
             params[:account][:settings].delete(:enable_eportfolios)
+            params[:account][:settings].delete(:include_integration_ids_in_gradebook_exports)
           end
         else
           # must have :manage_site_settings to update these
@@ -888,6 +893,7 @@ class AccountsController < ApplicationController
             :enable_eportfolios,
             :enable_profiles,
             :enable_turnitin,
+            :include_integration_ids_in_gradebook_exports,
             :show_scheduler,
             :global_includes,
             :gmail_domain
@@ -981,14 +987,16 @@ class AccountsController < ApplicationController
 
       @announcements = @account.announcements.order(:created_at).paginate(page: params[:page], per_page: 50)
       @external_integration_keys = ExternalIntegrationKey.indexed_keys_for(@account)
-
       js_env({
         APP_CENTER: { enabled: Canvas::Plugin.find(:app_center).enabled? },
         LTI_LAUNCH_URL: account_tool_proxy_registration_path(@account),
+        EXTERNAL_TOOLS_CREATE_URL: url_for(controller: :external_tools, action: :create, account_id: @context.id),
+        TOOL_CONFIGURATION_SHOW_URL: account_show_tool_configuration_url(account_id: @context.id, developer_key_id: ':developer_key_id'),
         MEMBERSHIP_SERVICE_FEATURE_FLAG_ENABLED: @account.root_account.feature_enabled?(:membership_service_for_lti_tools),
         LTI_13_TOOLS_FEATURE_FLAG_ENABLED: @account.root_account.feature_enabled?(:lti_1_3),
         CONTEXT_BASE_URL: "/accounts/#{@context.id}",
         MASKED_APP_CENTER_ACCESS_TOKEN: @account.settings[:app_center_access_token].try(:[], 0...5),
+        NEW_FEATURES_UI: @account.root_account.feature_enabled?(:new_features_ui),
         PERMISSIONS: {
           :create_tool_manually => @account.grants_right?(@current_user, session, :create_tool_manually),
         },
@@ -1395,6 +1403,7 @@ class AccountsController < ApplicationController
                                    :enable_profiles, :enable_gravatar, :enable_turnitin, :equella_endpoint,
                                    :equella_teaser, :external_notification_warning, :global_includes,
                                    :google_docs_domain, :help_link_icon, :help_link_name,
+                                   :include_integration_ids_in_gradebook_exports,
                                    :include_students_in_global_survey, :license_type,
                                    {:lock_all_announcements => [:value, :locked]}.freeze,
                                    :login_handle_name, :mfa_settings, :no_enrollments_can_create_courses,
@@ -1462,7 +1471,7 @@ class AccountsController < ApplicationController
       help_link_name: @account.settings[:help_link_name] || default_help_link_name,
       help_link_icon: @account.settings[:help_link_icon] || 'help',
       CUSTOM_HELP_LINKS: @account.help_links || [],
-      DEFAULT_HELP_LINKS: Account::HelpLinks.instantiate_links(Account::HelpLinks.default_links)
+      DEFAULT_HELP_LINKS: @account.help_links_builder.instantiate_links(@account.help_links_builder.default_links)
     }
   end
 

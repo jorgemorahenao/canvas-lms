@@ -17,7 +17,7 @@
  */
 
 import React from 'react'
-import {act, fireEvent, render, waitForElement} from 'react-testing-library'
+import {act, render, wait, waitForElementToBeRemoved} from 'react-testing-library'
 
 import Bridge from '../../../../bridge/Bridge'
 import * as fakeSource from '../../../../sidebar/sources/fake'
@@ -28,9 +28,14 @@ describe('RCE Plugins > CanvasContentTray', () => {
   let props
 
   beforeEach(() => {
+    jest.setTimeout(20000)
+
     props = {
       bridge: new Bridge(),
-      source: fakeSource
+      contextId: '1201',
+      contextType: 'Course',
+      source: fakeSource,
+      themeUrl: 'http://localhost/tinymce-theme.swf'
     }
   })
 
@@ -39,30 +44,18 @@ describe('RCE Plugins > CanvasContentTray', () => {
   }
 
   function getTray() {
-    return component.queryByRole('dialog')
+    const $tray = component.queryByRole('dialog')
+    if ($tray) {
+      return $tray
+    }
+    throw new Error('not mounted')
   }
 
-  async function showTrayForPlugin(plugin) {
+    async function showTrayForPlugin(plugin) {
     act(() => {
       props.bridge.controller.showTrayForPlugin(plugin)
     })
-    await waitForElement(getTray)
-  }
-
-  function selectContentType(contentTypeLabel) {
-    const contentTypeField = component.getByLabelText('Content Type')
-    fireEvent.click(contentTypeField)
-    fireEvent.click(component.getByText(contentTypeLabel))
-  }
-
-  function getContentSubtypeField() {
-    return component.queryByLabelText('Content Subtype')
-  }
-
-  function selectContentSubtype(contentSubtypeLabel) {
-    const contentTypeField = getContentSubtypeField()
-    fireEvent.click(contentTypeField)
-    fireEvent.click(component.getByText(contentSubtypeLabel))
+    await wait(getTray, {timeout: 19500})
   }
 
   describe('Tray Label', () => {
@@ -90,6 +83,26 @@ describe('RCE Plugins > CanvasContentTray', () => {
     it('is labeled with "Course Documents" when using the "documents" content type', async () => {
       await showTrayForPlugin('documents')
       expect(getTrayLabel()).toEqual('Course Documents')
+    })
+  })
+
+  describe('focus', () => {
+    beforeEach(renderComponent)
+
+    it('is set on tinymce after tray closes', async () => {
+      const mockFocus = jest.fn()
+      props.bridge.focusActiveEditor = mockFocus
+
+      await showTrayForPlugin('links')
+      expect(component.getByTestId('CanvasContentTray')).toBeInTheDocument()
+
+      const closeBtn = component.getByText('Close')
+      closeBtn.click()
+      // immediatly after being asked to close, INSTUI Tray removes role='dialog' and
+      // adds aria-hidden='true', so the getTray() function above does not work
+      await waitForElementToBeRemoved(() => component.queryByTestId('CanvasContentTray'))
+
+      expect(mockFocus).toHaveBeenCalledWith(false)
     })
   })
 })

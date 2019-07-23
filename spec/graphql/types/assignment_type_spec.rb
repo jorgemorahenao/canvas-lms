@@ -232,6 +232,21 @@ describe Types::AssignmentType do
       ).to eq [submission1.id.to_s]
     end
 
+    it "returns nil when not logged in" do
+      course.update(is_public: true)
+
+      expect(
+        assignment_type.resolve("_id", current_user: nil)
+      ).to eq assignment.id.to_s
+
+      expect(
+        assignment_type.resolve(
+          "submissionsConnection { nodes { _id } }",
+          current_user: nil
+        )
+      ).to be_nil
+    end
+
     it "can filter submissions according to workflow state" do
       expect(
         assignment_type.resolve(
@@ -430,16 +445,12 @@ describe Types::AssignmentType do
     let(:student) { course.enroll_user(User.create!, "StudentEnrollment", enrollment_state: "active").user }
     let(:teacher) { course.enroll_user(User.create!, "TeacherEnrollment", enrollment_state: "active").user }
 
-    before(:each) do
-      @post_policy = course.post_policies.create!(assignment: assignment, post_manually: true)
-    end
-
     context "when user has manage_grades permission" do
       let(:context) { { current_user: teacher } }
 
       it "returns the PostPolicy related to the assignment" do
         resolver = GraphQLTypeTester.new(assignment, context)
-        expect(resolver.resolve("postPolicy {_id}").to_i).to eql @post_policy.id
+        expect(resolver.resolve("postPolicy {_id}").to_i).to eql assignment.post_policy.id
       end
     end
 

@@ -31,6 +31,10 @@ export default class ToolConfiguration extends React.Component {
     return this.configMethodsRef.generateToolConfiguration();
   }
 
+  valid = () => {
+    return this.configMethodsRef.valid()
+  }
+
   setConfigurationMethodsRef = node => this.configMethodsRef = node;
 
   body() {
@@ -39,12 +43,16 @@ export default class ToolConfiguration extends React.Component {
         <ToolConfigurationForm
           ref={this.setConfigurationMethodsRef}
           dispatch={this.props.dispatch}
-          toolConfiguration={this.props.createLtiKeyState.toolConfiguration}
-          toolConfigurationUrl={this.props.createLtiKeyState.toolConfigurationUrl}
+          toolConfiguration={this.props.toolConfiguration}
+          toolConfigurationUrl={this.props.toolConfigurationUrl}
           validScopes={ENV.validLtiScopes}
           validPlacements={ENV.validLtiPlacements}
           setLtiConfigurationMethod={this.props.setLtiConfigurationMethod}
           configurationMethod={this.props.createLtiKeyState.configurationMethod}
+          editing={this.props.editing}
+          showRequiredMessages={this.props.showRequiredMessages}
+          updateToolConfiguration={this.props.updateToolConfiguration}
+          updateToolConfigurationUrl={this.props.updateToolConfigurationUrl}
         />
       )
     }
@@ -58,7 +66,9 @@ export default class ToolConfiguration extends React.Component {
         dispatch={this.props.dispatch}
         setEnabledScopes={this.props.setEnabledScopes}
         setDisabledPlacements={this.props.setDisabledPlacements}
+        updateToolConfiguration={this.props.updateToolConfiguration}
         setPrivacyLevel={this.props.setPrivacyLevel}
+        showCustomizationMessages={this.props.showCustomizationMessages}
       />
     )
   }
@@ -85,5 +95,14 @@ ToolConfiguration.propTypes = {
     enabledScopes: PropTypes.arrayOf(PropTypes.string).isRequired,
     disabledPlacements: PropTypes.arrayOf(PropTypes.string).isRequired,
     configurationMethod: PropTypes.string.isRequired
-  }).isRequired
+  }).isRequired,
+  toolConfiguration: PropTypes.shape({
+    oidc_initiation_url: PropTypes.string
+  }),
+  editing: PropTypes.bool.isRequired,
+  showRequiredMessages: PropTypes.bool.isRequired,
+  showCustomizationMessages: PropTypes.bool.isRequired,
+  updateToolConfiguration: PropTypes.func,
+  updateToolConfigurationUrl: PropTypes.func,
+  toolConfigurationUrl: PropTypes.string.isRequired
 }
