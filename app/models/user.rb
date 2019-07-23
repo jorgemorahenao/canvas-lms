@@ -99,7 +99,7 @@ class User < ActiveRecord::Base
   has_many :access_tokens, -> { where(:workflow_state => "active").preload(:developer_key) }
   has_many :notification_endpoints, :through => :access_tokens
   has_many :context_external_tools, -> { order(:name) }, as: :context, inverse_of: :context, dependent: :destroy
-  has_many :lti_results, inverse_of: :user, class_name: 'Lti::Result'
+  has_many :lti_results, inverse_of: :user, class_name: 'Lti::Result', dependent: :destroy
 
   has_many :student_enrollments
   has_many :ta_enrollments
@@ -145,7 +145,7 @@ class User < ActiveRecord::Base
   has_many :media_objects, :as => :context, :inverse_of => :context
   has_many :user_generated_media_objects, :class_name => 'MediaObject'
   has_many :user_notes
-  has_many :account_reports
+  has_many :account_reports, inverse_of: :user
   has_many :stream_item_instances, :dependent => :delete_all
   has_many :all_conversations, -> { preload(:conversation) }, class_name: 'ConversationParticipant'
   has_many :conversation_batches, -> { preload(:root_conversation_message) }
@@ -1474,14 +1474,6 @@ class User < ActiveRecord::Base
     end
   end
 
-  def watched_conversations_intro?
-    preferences[:watched_conversations_intro] == true
-  end
-
-  def watched_conversations_intro(value=true)
-    preferences[:watched_conversations_intro] = value
-  end
-
   def send_scores_in_emails?(root_account)
     preferences[:send_scores_in_emails] == true && root_account.settings[:allow_sending_scores_in_emails] != false
   end
@@ -1532,10 +1524,6 @@ class User < ActiveRecord::Base
 
   def default_notifications_disabled?
     !!preferences[:default_notifications_disabled]
-  end
-
-  def use_new_conversations?
-    true
   end
 
   def uuid
@@ -1750,14 +1738,16 @@ class User < ActiveRecord::Base
   end
 
   def has_active_enrollment?
+    return @_has_active_enrollment if defined?(@_has_active_enrollment)
     # don't need an expires_at here because user will be touched upon enrollment activation
-    Rails.cache.fetch([self, 'has_active_enrollment', ApplicationController.region ].cache_key) do
+    @_has_active_enrollment = Rails.cache.fetch([self, 'has_active_enrollment', ApplicationController.region ].cache_key) do
       self.enrollments.shard(in_region_associated_shards).current.active_by_date.exists?
     end
   end
 
   def has_future_enrollment?
-    Rails.cache.fetch([self, 'has_future_enrollment', ApplicationController.region ].cache_key, :expires_in => 1.hour) do
+    return @_has_future_enrollment if defined?(@_has_future_enrollment)
+    @_has_future_enrollment = Rails.cache.fetch([self, 'has_future_enrollment', ApplicationController.region ].cache_key, :expires_in => 1.hour) do
       self.enrollments.shard(in_region_associated_shards).active_or_pending_by_date.exists?
     end
   end
@@ -1770,8 +1760,22 @@ class User < ActiveRecord::Base
     end
   end
 
+  def cached_current_group_memberships_by_date
+    @cached_current_group_memberships_by_date ||= self.shard.activate do
+      Rails.cache.fetch_with_batched_keys(['current_group_memberships_by_date', ApplicationController.region].cache_key, batch_object: self, batched_keys: [:enrollments, :groups]) do
+        Shard.with_each_shard(self.in_region_associated_shards) do
+          GroupMembership.where(:user_id => self).joins(:group).
+            joins("LEFT OUTER JOIN #{Enrollment.quoted_table_name} ON enrollments.user_id=group_memberships.user_id AND enrollments.course_id=groups.context_id AND groups.context_type='Course'").
+            joins("LEFT OUTER JOIN #{EnrollmentState.quoted_table_name} ON enrollment_states.enrollment_id=enrollments.id").
+            where("group_memberships.workflow_state='accepted' AND groups.workflow_state<>'deleted' AND COALESCE(enrollment_states.state,'active') IN ('invited','active')").to_a
+        end
+      end
+    end
+  end
+
   def has_student_enrollment?
-    Rails.cache.fetch_with_batched_keys(['has_student_enrollment', ApplicationController.region ].cache_key, batch_object: self, batched_keys: :enrollments) do
+    return @_has_student_enrollment if defined?(@_has_student_enrollment)
+    @_has_student_enrollment = Rails.cache.fetch_with_batched_keys(['has_student_enrollment', ApplicationController.region ].cache_key, batch_object: self, batched_keys: :enrollments) do
       self.enrollments.shard(in_region_associated_shards).where(:type => %w{StudentEnrollment StudentViewEnrollment}).
         where.not(:workflow_state => %w{rejected inactive deleted}).exists?
     end
@@ -1779,7 +1783,8 @@ class User < ActiveRecord::Base
 
   def non_student_enrollment?
     # We should be able to remove this method when the planner works for teachers/other course roles
-    Rails.cache.fetch_with_batched_keys(['has_non_student_enrollment', ApplicationController.region ].cache_key, batch_object: self, batched_keys: :enrollments) do
+    return @_non_student_enrollment if defined?(@_non_student_enrollment)
+    @_non_student_enrollment = Rails.cache.fetch_with_batched_keys(['has_non_student_enrollment', ApplicationController.region ].cache_key, batch_object: self, batched_keys: :enrollments) do
       self.enrollments.shard(in_region_associated_shards).where.not(type: %w{StudentEnrollment StudentViewEnrollment ObserverEnrollment}).
         where.not(workflow_state: %w{rejected inactive deleted}).exists?
     end
@@ -2699,9 +2704,14 @@ class User < ActiveRecord::Base
   end
 
   def current_active_groups?
-    return true if self.current_groups.preload(:context).any?(&:context_available?)
-    return true if self.current_groups.shard(self.in_region_associated_shards).preload(:context).any?(&:context_available?)
-    false
+    return @_current_active_groups if defined?(@_current_active_groups)
+    @_current_active_groups = self.shard.activate do
+      Rails.cache.fetch_with_batched_keys(['current_active_groups', ApplicationController.region].cache_key, batch_object: self, batched_keys: :groups) do
+        return true if self.current_groups.preload(:context).any?(&:context_available?)
+        return true if self.current_groups.shard(self.in_region_associated_shards).preload(:context).any?(&:context_available?)
+        false
+      end
+    end
   end
 
   def all_active_pseudonyms(reload=false)

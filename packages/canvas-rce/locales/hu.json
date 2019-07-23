@@ -23,6 +23,9 @@
   "cancel_image_upload_2c771950": {
     "message": "Cancel image upload"
   },
+  "canvas_plugins_705a5016": {
+    "message": "Canvas Pluginok"
+  },
   "cc_attribution_f6de631f": {
     "message": "CC Nevezd meg!"
   },
@@ -95,8 +98,14 @@
   "discussions_index_6c36ced": {
     "message": "Fórumok indexe"
   },
+  "done_54e3d4b6": {
+    "message": "Kész"
+  },
   "due_multiple_dates_cc0ee3f5": {
     "message": "Határidő: Több határidő van érvényben"
+  },
+  "embed_image_1080badc": {
+    "message": "Beágyazott kép"
   },
   "enter_search_terms_e397b1f0": {
     "message": "keresőszavak megadása"
@@ -112,6 +121,9 @@
   },
   "folder_705fd2d7": {
     "message": "Mappa"
+  },
+  "generating_preview_45b53be0": {
+    "message": "Előnézet generálása... "
   },
   "grades_a61eba0a": {
     "message": "Értékelések"
@@ -131,9 +143,6 @@
   "image_upload_form_7b74079a": {
     "message": "Image Upload Form"
   },
-  "image_url_2aee2734": {
-    "message": "Kép URL"
-  },
   "images_7ce26570": {
     "message": "Képek"
   },
@@ -151,6 +160,9 @@
   },
   "invalid_file_type_881cc9b2": {
     "message": "Érvénytelen fájltípus"
+  },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "Billentyűparancsok"
   },
   "link_7262adec": {
     "message": "Hivatkozás"
@@ -179,14 +191,11 @@
   "loading_failed_b3524381": {
     "message": "Loading failed..."
   },
-  "loading_more_results_def6df65": {
-    "message": "További találatok betöltése..."
-  },
-  "media_af190855": {
-    "message": "Média"
-  },
   "modules_c4325335": {
     "message": "Modulok"
+  },
+  "next_page_d2a39853": {
+    "message": "Következő oldal"
   },
   "no_results_940393cf": {
     "message": "No results."
@@ -200,6 +209,9 @@
   "people_b4ebb13c": {
     "message": "Résztvevők"
   },
+  "previous_page_928fc112": {
+    "message": "Előző oldal"
+  },
   "published_c944a23d": {
     "message": "publikált"
   },
@@ -212,6 +224,9 @@
   "recording_98da6bda": {
     "message": "Felvétel"
   },
+  "rich_content_editor_2708ef21": {
+    "message": "Vizuális szövegszerkesztő"
+  },
   "save_11a80ec3": {
     "message": "Mentés"
   },
@@ -223,6 +238,12 @@
   },
   "select_a_folder_to_upload_your_file_into_b82d12b": {
     "message": "Select a folder to upload your file into"
+  },
+  "selected_274ce24f": {
+    "message": "Kiválasztva"
+  },
+  "size_b30e1077": {
+    "message": "Méret"
   },
   "start_over_f7552aa9": {
     "message": "Újrakezdés"

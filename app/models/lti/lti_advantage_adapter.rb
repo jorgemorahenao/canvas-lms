@@ -71,7 +71,8 @@ module Lti
         iss: Canvas::Security.config['lti_iss'],
         login_hint: Lti::Asset.opaque_identifier_for(@user),
         target_link_uri: target_link_uri,
-        lti_message_hint: message_hint
+        lti_message_hint: message_hint,
+        canvas_region: @context.shard.database_server.config[:region] || 'not_configured'
       ).as_json
     end
 
@@ -95,7 +96,7 @@ module Lti
         user: @user,
         expander: @expander,
         return_url: @return_url,
-        opts: @opts
+        opts: @opts.merge(option_overrides)
       )
     end
 
@@ -107,9 +108,15 @@ module Lti
           user: @user,
           expander: @expander,
           return_url: @return_url,
-          opts: @opts
+          opts: @opts.merge(option_overrides)
         )
       end
+    end
+
+    def option_overrides
+      {
+        target_link_uri: target_link_uri
+      }
     end
 
     def resource_type

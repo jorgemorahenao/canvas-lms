@@ -29,6 +29,7 @@ export default function generator ({ borders, colors, forms, shadows, spacing, t
     canvasSuccessColor: colors.textSuccess,
     canvasBorderColor: colors.borderMedium,
     toolbarButtonHoverBackground: darken(colors.backgroundLightest, 5), // copied from INSTUI "light" Button
+    canvasBrandColor: colors.brand,
 
     activeMenuItemBackground: colors.backgroundBrand,
     activeMenuItemLabelColor: colors.textLightest,
@@ -66,7 +67,7 @@ export default function generator ({ borders, colors, forms, shadows, spacing, t
 
     canvasFocusBorderColor: borders.brand,
     canvasFocusBorderWidth: borders.widthSmall, // canvas really uses widthMedium
-    canvasFocusBoxShadow: `0 0 0 0 2px ${colors.brand}`,
+    canvasFocusBoxShadow: `0 0 0 2px ${colors.brand}`,
 
     canvasFontFamily: typography.fontFamily,
     canvasFontSize: '1rem',
@@ -95,6 +96,7 @@ generator['canvas'] = function(variables) {
     canvasLinkColor: variables['ic-link-color'],
     canvasLinkDecoration: variables['ic-link-decoration'],
     canvasTextColor: variables['ic-brand-font-color-dark'],
+    canvasBrandColor: variables['ic-brand-primary'],
 
     canvasFocusBorderColor: variables['ic-brand-primary'],
     canvasFocusBoxShadow: `0 0 0 2px ${variables['ic-brand-primary']}`,
@@ -114,6 +116,7 @@ generator['canvas-a11y'] = generator['canvas-high-contrast'] = function ({colors
     canvasButtonBackground: colors.backgroundLight,
     canvasSecondaryButtonBorderColor: colors.borderMedium,
     canvasLinkDecoration: 'underline',
-    canvasFocusBorderColor: colors.brand
+    canvasFocusBoxShadow: `0 0 0 2px ${colors.brand}`,
+    canvasBrandColor: colors.brand
   }
 }

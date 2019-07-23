@@ -60,7 +60,11 @@ export default class ConfirmDialog extends React.Component {
     modalLabel: string, // defaults to heading
 
     // properties to pass to the modal
-    modalProps: shape(Modal.propTypes),
+    modalProps: shape({
+      // by default Modal.propTypes.label "isRequired" but ours is not because we fall back to this.props.heading
+      ...Modal.propTypes,
+      label: string
+    }),
 
     closeLabel: string,
 
@@ -109,7 +113,12 @@ export default class ConfirmDialog extends React.Component {
   render() {
     return (
       this.props.open && ( // Don't waste time rendering anything if it is not open
-        <Modal {...this.props.modalProps} label={this.modalLabel()} open={this.props.open}>
+        <Modal
+          {...this.props.modalProps}
+          label={this.modalLabel()}
+          open={this.props.open}
+          onDismiss={this.props.onDismiss}
+        >
           <ModalHeader>
             <Heading level="h2">{this.props.heading}</Heading>
             <CloseButton

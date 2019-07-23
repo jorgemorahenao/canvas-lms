@@ -41,6 +41,27 @@ describe DeveloperKey do
     )
   end
 
+  describe 'default values for is_lti_key' do
+    let(:public_jwk) do
+      key_hash = Lti::RSAKeyPair.new.public_jwk.to_h
+      key_hash['kty'] = key_hash['kty'].to_s
+      key_hash
+    end
+    let(:public_jwk_url) { "https://hello.world.com" }
+
+    it 'throws error if public jwk and public jwk are absent' do
+      expect { DeveloperKey.create!(is_lti_key: true) }.to raise_error ActiveRecord::RecordInvalid
+    end
+
+    it 'validates when public jwk is present' do
+      expect { DeveloperKey.create!(is_lti_key: true, public_jwk: public_jwk) }.to_not raise_error
+    end
+
+    it 'validates when public jwk url is present' do
+      expect { DeveloperKey.create!(is_lti_key: true, public_jwk_url: public_jwk_url) }.to_not raise_error
+    end
+  end
+
   describe 'external tool management' do
     specs_require_sharding
     include_context 'lti_1_3_spec_helper'
@@ -345,7 +366,7 @@ describe DeveloperKey do
 
       it { is_expected.to match_array [lti_site_admin_key] }
     end
-  end 
+  end
 
   describe "sets a default value" do
     it "when visible is not specified" do

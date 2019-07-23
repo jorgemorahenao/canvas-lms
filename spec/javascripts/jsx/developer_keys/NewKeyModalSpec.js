@@ -33,7 +33,10 @@ const fakeActions = {
   editDeveloperKey: () => {},
   ltiKeysSetDisabledPlacements: () => {},
   ltiKeysSetEnabledScopes: () => {},
-  ltiKeysSetPrivacyLevel: () => {}
+  ltiKeysSetPrivacyLevel: () => {},
+  setLtiConfigurationMethod: () => {},
+  resetLtiState: () => {},
+  developerKeysModalClose: () => {}
 }
 
 const developerKey = {
@@ -151,6 +154,7 @@ test('it opens the modal if isOpen prop is true', () => {
       store={{dispatch: () => {}}}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   equal(wrapper.find('Modal').prop('open'), true)
@@ -168,6 +172,7 @@ test('it closes the modal if isOpen prop is false', () => {
       store={{dispatch: () => {}}}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   equal(wrapper.find('Modal').prop('open'), false)
@@ -177,9 +182,7 @@ test('it sends the contents of the form saving', () => {
   const createOrEditSpy = sinon.spy()
   const dispatchSpy = sinon.stub().resolves()
 
-  const fakeActions = {
-    createOrEditDeveloperKey: createOrEditSpy
-  }
+  const mergedFakeActions = Object.assign({}, fakeActions, { createOrEditDeveloperKey: createOrEditSpy })
   const fakeStore = {
     dispatch: dispatchSpy
   }
@@ -194,10 +197,11 @@ test('it sends the contents of the form saving', () => {
       closeModal={() => {}}
       createOrEditDeveloperKeyState={editDeveloperKeyState2}
       listDeveloperKeyScopesState={listDeveloperKeyScopesState}
-      actions={fakeActions}
+      actions={mergedFakeActions}
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
 
@@ -205,15 +209,17 @@ test('it sends the contents of the form saving', () => {
 
   const [[sentFormData]] = createOrEditSpy.args
 
-  equal(sentFormData.get('developer_key[name]'), developerKey.name)
-  equal(sentFormData.get('developer_key[email]'), developerKey.email)
-  equal(sentFormData.get('developer_key[redirect_uri]'), developerKey.redirect_uri)
-  equal(sentFormData.get('developer_key[redirect_uris]'), developerKey.redirect_uris)
-  equal(sentFormData.get('developer_key[vendor_code]'), developerKey.vendor_code)
-  equal(sentFormData.get('developer_key[icon_url]'), developerKey.icon_url)
-  equal(sentFormData.get('developer_key[notes]'), developerKey.notes)
-  equal(sentFormData.get('developer_key[require_scopes]'), 'true')
-  equal(sentFormData.get('developer_key[test_cluster_only]'), 'true')
+  const developer_key = sentFormData.developer_key
+
+  equal(developer_key.name, developerKey.name)
+  equal(developer_key.email, developerKey.email)
+  equal(developer_key.redirect_uri, developerKey.redirect_uri)
+  equal(developer_key.redirect_uris, developerKey.redirect_uris)
+  equal(developer_key.vendor_code, developerKey.vendor_code)
+  equal(developer_key.icon_url, developerKey.icon_url)
+  equal(developer_key.notes, developerKey.notes)
+  equal(developer_key.require_scopes, true)
+  equal(developer_key.test_cluster_only, true)
 
   wrapper.unmount()
 })
@@ -222,9 +228,7 @@ test('sends form content without scopes and require_scopes set to false when not
   const createOrEditSpy = sinon.spy()
   const dispatchSpy = sinon.stub().resolves()
 
-  const fakeActions = {
-    createOrEditDeveloperKey: createOrEditSpy
-  }
+  const mergedFakeActions = Object.assign({}, fakeActions, { createOrEditDeveloperKey: createOrEditSpy })
   const fakeStore = {
     dispatch: dispatchSpy
   }
@@ -237,10 +241,11 @@ test('sends form content without scopes and require_scopes set to false when not
       closeModal={() => {}}
       createOrEditDeveloperKeyState={editDeveloperKeyState}
       listDeveloperKeyScopesState={listDeveloperKeyScopesState}
-      actions={fakeActions}
+      actions={mergedFakeActions}
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
 
@@ -248,15 +253,17 @@ test('sends form content without scopes and require_scopes set to false when not
 
   const [[sentFormData]] = createOrEditSpy.args
 
-  equal(sentFormData.get('developer_key[name]'), developerKey.name)
-  equal(sentFormData.get('developer_key[email]'), developerKey.email)
-  equal(sentFormData.get('developer_key[redirect_uri]'), developerKey.redirect_uri)
-  equal(sentFormData.get('developer_key[redirect_uris]'), developerKey.redirect_uris)
-  equal(sentFormData.get('developer_key[vendor_code]'), developerKey.vendor_code)
-  equal(sentFormData.get('developer_key[icon_url]'), developerKey.icon_url)
-  equal(sentFormData.get('developer_key[notes]'), developerKey.notes)
-  equal(sentFormData.get('developer_key[require_scopes]'), 'false')
-  equal(sentFormData.get('developer_key[test_cluster_only]'), 'false')
+  const developer_key = sentFormData.developer_key
+
+  equal(developer_key.name, developerKey.name)
+  equal(developer_key.email, developerKey.email)
+  equal(developer_key.redirect_uri, developerKey.redirect_uri)
+  equal(developer_key.redirect_uris, developerKey.redirect_uris)
+  equal(developer_key.vendor_code, developerKey.vendor_code)
+  equal(developer_key.icon_url, developerKey.icon_url)
+  equal(developer_key.notes, developerKey.notes)
+  equal(developer_key.require_scopes, false)
+  equal(developer_key.test_cluster_only, false)
 
   wrapper.unmount()
 })
@@ -264,7 +271,7 @@ test('sends form content without scopes and require_scopes set to false when not
 test('it adds each selected scope to the form data', () => {
   const createOrEditSpy = sinon.spy()
   const dispatchSpy = sinon.stub().resolves()
-  const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
+  const mergedFakeActions = Object.assign({}, fakeActions, { createOrEditDeveloperKey: createOrEditSpy })
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: ['test'] })
   const editDeveloperKeyState2 = Object.assign({}, editDeveloperKeyState, { developerKey: developerKey2 })
@@ -276,15 +283,17 @@ test('it adds each selected scope to the form data', () => {
       closeModal={() => {}}
       createOrEditDeveloperKeyState={editDeveloperKeyState2}
       listDeveloperKeyScopesState={listDeveloperKeyScopesState}
-      actions={fakeActions}
+      actions={mergedFakeActions}
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   wrapper.instance().submitForm()
   const [[sentFormData]] = createOrEditSpy.args
-  deepEqual(sentFormData.getAll('developer_key[scopes][]'), selectedScopes)
+  const developer_key = sentFormData.developer_key
+  deepEqual(developer_key.scopes, selectedScopes)
 
   wrapper.unmount()
 })
@@ -292,7 +301,7 @@ test('it adds each selected scope to the form data', () => {
 test('it removes testClusterOnly from the form data if it is undefined', () => {
   const createOrEditSpy = sinon.spy()
   const dispatchSpy = sinon.stub().resolves()
-  const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
+  const mergedFakeActions = Object.assign({}, fakeActions, { createOrEditDeveloperKey: createOrEditSpy })
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: ['test'] })
   delete developerKey2.test_cluster_only
@@ -305,15 +314,17 @@ test('it removes testClusterOnly from the form data if it is undefined', () => {
       closeModal={() => {}}
       createOrEditDeveloperKeyState={editDeveloperKeyState2}
       listDeveloperKeyScopesState={listDeveloperKeyScopesState}
-      actions={fakeActions}
+      actions={mergedFakeActions}
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   wrapper.instance().submitForm()
   const [[sentFormData]] = createOrEditSpy.args
-  notOk(sentFormData.has('test_cluster_only'))
+  const developer_key = sentFormData.developer_key
+  notOk(developer_key.test_cluster_only)
 
   wrapper.unmount()
 })
@@ -322,7 +333,7 @@ test('flashes an error if no scopes are selected', () => {
   const flashStub = sinon.stub($, 'flashError')
   const createOrEditSpy = sinon.spy()
   const dispatchSpy = sinon.stub().resolves()
-  const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
+  const mergedFakeActions = Object.assign({}, fakeActions, { createOrEditDeveloperKey: createOrEditSpy })
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: [] })
   const editDeveloperKeyState2 = Object.assign({}, editDeveloperKeyState, { developerKey: developerKey2 })
@@ -334,10 +345,11 @@ test('flashes an error if no scopes are selected', () => {
       closeModal={() => {}}
       createOrEditDeveloperKeyState={editDeveloperKeyState2}
       listDeveloperKeyScopesState={listDeveloperKeyScopesState}
-      actions={fakeActions}
+      actions={mergedFakeActions}
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={[]}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   wrapper.instance().submitForm()
@@ -364,6 +376,7 @@ test('allows saving if the key previously had scopes', () => {
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
 
@@ -392,6 +405,7 @@ test('clears the lti key state when modal is closed', () => {
       store={{dispatch: () => {}}}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   wrapper.instance().closeModal()
@@ -401,6 +415,7 @@ test('clears the lti key state when modal is closed', () => {
 
 test('saves customizations', () => {
   const ltiStub = sinon.spy()
+  const dispatchSpy = sinon.stub().resolves()
   const actions = Object.assign(fakeActions, {
     ltiKeysUpdateCustomizations: ltiStub
   })
@@ -413,13 +428,14 @@ test('saves customizations', () => {
       closeModal={() => {}}
       createOrEditDeveloperKeyState={createDeveloperKeyState}
       actions={actions}
-      store={{dispatch: () => {}}}
+      store={{dispatch: dispatchSpy}}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   wrapper.instance().saveCustomizations()
-  ok(ltiStub.calledWith({scopes: ['https://www.test.com/lineitem']}, ['account_navigation'], 22, {}, null))
+  ok(ltiStub.calledWith({scopes: ['https://www.test.com/lineitem']}, ['account_navigation'], 22, {}, ""))
   wrapper.unmount()
 })
 
@@ -427,7 +443,7 @@ test('flashes an error if redirect_uris is empty', () => {
   const flashStub = sinon.stub($, 'flashError')
   const createOrEditSpy = sinon.spy()
   const dispatchSpy = sinon.stub().resolves()
-  const fakeActions = { createOrEditDeveloperKey: createOrEditSpy }
+  const mergedFakeActions = Object.assign({}, fakeActions, { createOrEditDeveloperKey: createOrEditSpy })
   const fakeStore = { dispatch: dispatchSpy }
   const developerKey2 = Object.assign({}, developerKey, { require_scopes: true, scopes: [], redirect_uris: '' })
   const editDeveloperKeyState2 = Object.assign({}, editDeveloperKeyState, { developerKey: developerKey2 })
@@ -439,10 +455,11 @@ test('flashes an error if redirect_uris is empty', () => {
       closeModal={() => {}}
       createOrEditDeveloperKeyState={editDeveloperKeyState2}
       listDeveloperKeyScopesState={listDeveloperKeyScopesState}
-      actions={fakeActions}
+      actions={mergedFakeActions}
       store={fakeStore}
       mountNode={modalMountNode}
       selectedScopes={[]}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   wrapper.instance().saveLtiToolConfiguration()
@@ -495,6 +512,7 @@ test('clears state on modal close', () => {
       store={{dispatch: () => {}}}
       mountNode={modalMountNode}
       selectedScopes={selectedScopes}
+      ctx={{params: {contextId: '1'}}}
     />
   )
   const text = 'I should show up in the text'

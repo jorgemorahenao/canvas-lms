@@ -85,7 +85,7 @@ class ContentZipper
       # This neglects the complexity of group assignments
       students = User.where(id: submissions.pluck(:user_id)).index_by(&:id)
     else
-      students    = assignment.representatives(user).index_by(&:id)
+      students    = assignment.representatives(user: user).index_by(&:id)
       submissions = assignment.submissions.where(user_id: students.keys,
                                                  submission_type: downloadable_submissions)
     end
@@ -141,7 +141,7 @@ class ContentZipper
 
       index = rewrite_eportfolio_richtext_entry(index, rich_text_attachments, entry, zip_attachment.user)
 
-      static_attachments += entry.attachments
+      static_attachments += entry.attachments.select {|x| x.grants_right?(zip_attachment.user, :download)}
       submissions += entry.submissions
     end
 
@@ -358,8 +358,8 @@ class ContentZipper
     if entry.content.is_a?(Array) && entry.content.present?
       entry.content.select { |c| c.is_a?(Hash) && c[:section_type] == "rich_text" }.each do |rt|
         rt[:content].gsub!(StaticAttachment::FILES_REGEX) do |match|
-          att = Attachment.find_by_id(Regexp.last_match(:obj_id))
-          if att.nil? || !att.grants_right?(user, :read)
+          att = Attachment.find_by(id: Regexp.last_match(:obj_id))
+          if att.nil? || !att.grants_right?(user, :download)
             match
           else
             sa = StaticAttachment.new(att, index)
@@ -446,7 +446,7 @@ class ContentZipper
     # they do not include submissions for group assignments for anyone
     # but the original submitter of the group submission
     attachment_ids = submission.attachment_ids.try(:split, ",")
-    Attachment.where(id: Array.wrap(attachment_ids))
+    submission.shard.activate { Attachment.where(id: Array.wrap(attachment_ids)) }
   end
 
   def get_user_name(students, submission)

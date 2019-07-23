@@ -59,7 +59,8 @@ describe Mutations::PostAssignmentGradesForSections do
   end
 
   before(:each) do
-    course.enable_feature!(:post_policies)
+    course.enable_feature!(:new_gradebook)
+    PostPolicy.enable_feature!
     @section1_student = section1.enroll_user(User.create!, "StudentEnrollment", "active").user
     @section2_student = section2.enroll_user(User.create!, "StudentEnrollment", "active").user
   end
@@ -68,7 +69,7 @@ describe Mutations::PostAssignmentGradesForSections do
     let(:context) { { current_user: teacher } }
 
     it "requires that the PostPolicy feature be enabled" do
-      course.disable_feature!(:post_policies)
+      PostPolicy.disable_feature!
       result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id]), context)
       expect(result.dig("errors", 0, "message")).to eql "Post Policies feature not enabled"
     end
@@ -180,6 +181,27 @@ describe Mutations::PostAssignmentGradesForSections do
       it "does not post the assignment grades for the sections not specified" do
         execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section2.id]), context)
         expect(section1_student_submission).not_to be_posted
+      end
+
+      context "when the poster has limited visibility" do
+        let(:ta) { User.create! }
+
+        before(:each) do
+          course.enroll_ta(ta, enrollment_state: "active", section: section1, limit_privileges_to_course_section: true)
+        end
+
+        it "does not post grades for the requested sections if the user cannot see them" do
+          execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id, section2.id]), {current_user: ta})
+          post_submissions_job.invoke_job
+          expect(assignment.submission_for_student(@section2_student).posted_at).to be nil
+        end
+
+        it "stores only the user ids of affected students on the Progress object" do
+          result = execute_query(mutation_str(assignment_id: assignment.id, section_ids: [section1.id, section2.id]), {current_user: ta})
+          post_submissions_job.invoke_job
+          progress = Progress.find(result.dig("data", "postAssignmentGradesForSections", "progress", "_id"))
+          expect(progress.results[:user_ids]).to match_array [@section1_student.id]
+        end
       end
     end
 

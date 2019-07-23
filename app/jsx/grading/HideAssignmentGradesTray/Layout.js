@@ -17,22 +17,20 @@
  */
 
 import React, {Fragment} from 'react'
-import {arrayOf, bool, func, shape, string} from 'prop-types'
+import {any, arrayOf, bool, shape, string} from 'prop-types'
 
-import Button from '@instructure/ui-buttons/lib/components/Button'
-import Flex, {FlexItem} from '@instructure/ui-layout/lib/components/Flex'
+import Alert from '@instructure/ui-alerts/lib/components/Alert'
+import FormFieldGroup from '@instructure/ui-form-field/lib/components/FormFieldGroup'
 import Heading from '@instructure/ui-elements/lib/components/Heading'
-import Spinner from '@instructure/ui-elements/lib/components/Spinner'
-import Text from '@instructure/ui-elements/lib/components/Text'
 import View from '@instructure/ui-layout/lib/components/View'
 
 import I18n from 'i18n!hide_assignment_grades_tray'
 
-import Description from './Description'
-import SpecificSections from '../SpecificSections'
+import FormContent from './FormContent'
 
 export default function Layout({
   assignment: {anonymousGrading, gradesPublished},
+  containerName,
   dismiss,
   hideBySections,
   hideBySectionsChanged,
@@ -43,84 +41,54 @@ export default function Layout({
   selectedSectionIds
 }) {
   const hasSections = sections.length > 0
-  const heading = (
-    <View as="div" margin="0 0 small" padding="0 medium">
-      <Heading as="h3" level="h4">
-        {I18n.t('Hide Grades')}
-      </Heading>
-    </View>
-  )
-
-  if (hidingGrades) {
-    return (
-      <Fragment>
-        {heading}
-
-        <View as="div" textAlign="center" padding="large">
-          <Spinner title={I18n.t('Hiding grades')} size="large" />
-        </View>
-      </Fragment>
-    )
-  }
 
   return (
     <Fragment>
-      {heading}
-
       {!gradesPublished && (
-        <View as="p" margin="small 0 small" padding="0 medium">
-          <Text>
-            {I18n.t(
-              'Hiding grades is not allowed because grades have not been released for this assignment.'
-            )}
-          </Text>
-        </View>
+        <Alert margin="x-small" variant="warning">
+          {I18n.t(
+            'Hiding grades is not allowed because grades have not been released for this assignment.'
+          )}
+        </Alert>
       )}
 
-      {hasSections && anonymousGrading && (
-        <View as="p" margin="small 0 small" padding="0 medium">
-          <Text>
-            {I18n.t('You can only hide grades for everyone when the assignment is anonymous.')}
-          </Text>
-        </View>
+      {gradesPublished && anonymousGrading && containerName === 'SPEED_GRADER' && (
+        <Alert margin="x-small" variant="warning">
+          {I18n.t('Hiding grades will refresh your browser. This may take a moment.')}
+        </Alert>
       )}
 
-      {hasSections && (
-        <SpecificSections
-          checked={hideBySections}
-          disabled={!gradesPublished || anonymousGrading}
-          onCheck={event => {
-            hideBySectionsChanged(event.target.checked)
-          }}
-          sections={sections}
+      {gradesPublished && hasSections && anonymousGrading && (
+        <Alert margin="x-small" variant="info">
+          {I18n.t(
+            'Grades can only be hidden for everyone when the assignment is anonymous. Anonymity will be enabled.'
+          )}
+        </Alert>
+      )}
+
+      <FormFieldGroup
+        description={
+          <View as="div" margin="0 0 small" padding="0 medium">
+            <Heading as="h3" level="h4">
+              {I18n.t('Hide Grades')}
+            </Heading>
+          </View>
+        }
+        label={I18n.t('Hide Grades')}
+        disabled={!gradesPublished}
+      >
+        <FormContent
+          assignment={{anonymousGrading, gradesPublished}}
+          dismiss={dismiss}
+          onHideClick={onHideClick}
+          hideBySections={hideBySections}
+          hideBySectionsChanged={hideBySectionsChanged}
+          hidingGrades={hidingGrades}
           sectionSelectionChanged={sectionSelectionChanged}
+          sections={sections}
           selectedSectionIds={selectedSectionIds}
         />
-      )}
-
-      <View as="div" margin="0 medium" className="hr" />
-
-      <View as="div" margin="medium 0" padding="0 medium">
-        <Description />
-      </View>
-
-      <View as="div" margin="0 medium" className="hr" />
-
-      <View as="div" margin="medium 0 0" padding="0 medium">
-        <Flex justifyItems="end">
-          <FlexItem margin="0 small 0 0">
-            <Button onClick={dismiss} disabled={!gradesPublished}>
-              {I18n.t('Close')}
-            </Button>
-          </FlexItem>
-
-          <FlexItem>
-            <Button onClick={onHideClick} disabled={!gradesPublished} variant="primary">
-              {I18n.t('Hide')}
-            </Button>
-          </FlexItem>
-        </Flex>
-      </View>
+      </FormFieldGroup>
     </Fragment>
   )
 }
@@ -130,17 +98,7 @@ Layout.propTypes = {
     anonymousGrading: bool.isRequired,
     gradesPublished: bool.isRequired
   }).isRequired,
-  dismiss: func.isRequired,
-  hideBySections: bool.isRequired,
-  hideBySectionsChanged: func.isRequired,
-  hidingGrades: bool.isRequired,
-  onHideClick: func.isRequired,
-  sections: arrayOf(
-    shape({
-      id: string.isRequired,
-      name: string.isRequired
-    })
-  ).isRequired,
-  sectionSelectionChanged: func.isRequired,
-  selectedSectionIds: arrayOf(string).isRequired
+  containerName: string,
+  sections: arrayOf(any).isRequired,
+  ...FormContent.propTypes
 }

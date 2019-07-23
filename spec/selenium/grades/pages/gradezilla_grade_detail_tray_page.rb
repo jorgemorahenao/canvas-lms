@@ -66,6 +66,10 @@ module Gradezilla
       f("#final-grade-value").text
     end
 
+    def group_message
+      # TODO: locator for the student group message text
+    end
+
     def self.speedgrader_link
       fj("a:contains('SpeedGrader')")
     end
@@ -183,11 +187,11 @@ module Gradezilla
     end
 
     def self.post_policy_type_radio_button(policy)
-      # TODO: locator for radio buttons similar to fj(".SubmissionTray__RadioInput label:contains('#{type}')")
+      fj("#AssignmentPostingPolicyTray__RadioInputGroup label:contains('#{policy}')")
     end
 
     def self.save_button
-      # TODO: locator for save button
+      fj("#AssignmentPostingPolicyTray__Buttons button:contains('Save')")
     end
   end
 end

@@ -32,8 +32,6 @@ class ApplicationController < ActionController::Base
     end
   end
 
-  layout :application_layout
-
   attr_accessor :active_tab
   attr_reader :context
 
@@ -54,8 +52,6 @@ class ApplicationController < ActionController::Base
   include Canvas::RequestForgeryProtection
   protect_from_forgery with: :exception
 
-  # load_user checks masquerading permissions, so this needs to be cleared first
-  before_action :clear_cached_contexts
   prepend_before_action :load_user, :load_account
   # make sure authlogic is before load_user
   skip_before_action :activate_authlogic
@@ -157,10 +153,8 @@ class ApplicationController < ActionController::Base
         DEEP_LINKING_LOGGING: Setting.get('deep_linking_logging', nil),
         SETTINGS: {
           open_registration: @domain_root_account.try(:open_registration?),
-          eportfolios_enabled: (@domain_root_account && @domain_root_account.settings[:enable_eportfolios] != false), # checking all user root accounts is slow
           collapse_global_nav: @current_user.try(:collapse_global_nav?),
-          show_feedback_link: show_feedback_link?,
-          enable_profiles: (@domain_root_account && @domain_root_account.settings[:enable_profiles] != false)
+          show_feedback_link: show_feedback_link?
         },
       }
       @js_env[:current_user] = @current_user ? Rails.cache.fetch(['user_display_json', @current_user].cache_key, :expires_in => 1.hour) { user_display_json(@current_user, :profile, [:avatar_is_fallback]) } : {}
@@ -225,6 +219,15 @@ class ApplicationController < ActionController::Base
   end
   helper_method :conditional_release_js_env
 
+  def set_student_context_cards_js_env
+    if @domain_root_account.feature_enabled?(:student_context_cards)
+      js_env(
+        STUDENT_CONTEXT_CARDS_ENABLED: true,
+        student_context_card_tools: external_tools_display_hashes(:student_context_card)
+      )
+    end
+  end
+
   def external_tools_display_hashes(type, context=@context, custom_settings=[])
     return [] if context.is_a?(Group)
 
@@ -232,7 +235,9 @@ class ApplicationController < ActionController::Base
     tools = ContextExternalTool.all_tools_for(context, {:placements => type,
       :root_account => @domain_root_account, :current_user => @current_user}).to_a
 
-    tools.select!{|tool| ContextExternalTool.visible?(tool.extension_setting(type)['visibility'], @current_user, context, session)}
+    tools.select!{|tool|
+      tool.visible_with_permission_check?(type, @current_user, context, session)
+    }
 
     tools.map do |tool|
       external_tool_display_hash(tool, type, {}, context, custom_settings)
@@ -240,7 +245,6 @@ class ApplicationController < ActionController::Base
   end
 
   def external_tool_display_hash(tool, type, url_params={}, context=@context, custom_settings=[])
-
     url_params = {
       id: tool.id,
       launch_type: type
@@ -268,11 +272,6 @@ class ApplicationController < ActionController::Base
     @domain_root_account&.feature_enabled?(:responsive_layout)
   end
   helper_method :use_responsive_layout?
-
-  def application_layout
-    use_responsive_layout? ? "ic_layout" : "application"
-  end
-  private :application_layout
 
   def grading_periods?
     !!@context.try(:grading_periods?)
@@ -671,24 +670,32 @@ class ApplicationController < ActionController::Base
   end
 
   def verified_user_check
-    if @domain_root_account&.user_needs_verification?(@current_user)
-      render_unverified_error # disable tools before verification
+    if @domain_root_account&.user_needs_verification?(@current_user) # disable tools before verification
+      if @current_user
+        render_unverified_error(
+          t("user not authorized to perform that action until verifying email"),
+          t("Complete registration by clicking the “finish the registration process” link sent to your email."))
+      else
+        render_unverified_error(
+          t("must be logged in and registered to perform that action"),
+          t("Please Log in to view this content"))
+      end
       false
     else
       true
     end
   end
 
-  def render_unverified_error
+  def render_unverified_error(json_message, flash_message)
     respond_to do |format|
       format.json do
         render json: {
           status: 'unverified',
-          errors: [{ message: I18n.t("user not authorized to perform that action until verifying email") }]
+          errors: [{ message: json_message }]
         }, status: :unauthorized
       end
       format.all do
-        flash[:warning] = t("Complete registration by clicking the “finish the registration process” link sent to your email.")
+        flash[:warning] = flash_message
         redirect_to_referrer_or_default(root_url)
       end
     end
@@ -757,7 +764,7 @@ class ApplicationController < ActionController::Base
           @context_membership = @context_enrollment
           check_for_readonly_enrollment_state
         elsif params[:account_id] || (self.is_a?(AccountsController) && params[:account_id] = params[:id])
-          @context = api_find(Account, params[:account_id])
+          @context = api_find(Account.active, params[:account_id])
           params[:context_id] = @context.id
           params[:context_type] = "Account"
           @context_enrollment = @context.account_users.active.where(user_id: @current_user.id).first if @context && @current_user
@@ -1039,6 +1046,11 @@ class ApplicationController < ActionController::Base
       end
       @context = @membership.group unless @problem
       @current_user = @membership.user unless @problem
+    elsif pieces[0] == 'user'
+      @current_user = UserPastLtiId.where(user_uuid: pieces[1]).take&.user
+      @current_user ||= User.where(uuid: pieces[1]).first
+      @problem = t "#application.errors.invalid_verification_code", "The verification code is invalid." unless @current_user
+      @context = @current_user
     else
       @context_type = pieces[0].classify
       if Context::CONTEXT_TYPES.include?(@context_type.to_sym)
@@ -1143,10 +1155,6 @@ class ApplicationController < ActionController::Base
   def set_no_cache_headers
     response.headers["Pragma"] = "no-cache"
     response.headers["Cache-Control"] = "no-cache, no-store"
-  end
-
-  def clear_cached_contexts
-    RoleOverride.clear_cached_contexts
   end
 
   def set_page_view
@@ -1745,7 +1753,7 @@ class ApplicationController < ActionController::Base
   helper_method :calendar_url_for, :files_url_for
 
   def conversations_path(params={})
-    if @current_user and @current_user.use_new_conversations?
+    if @current_user
       query_string = params.slice(:context_id, :user_id, :user_name).inject([]) do |res, (k, v)|
         res << "#{k}=#{v}"
         res
@@ -2099,6 +2107,16 @@ class ApplicationController < ActionController::Base
   end
   helper_method :js_bundle
 
+  def add_body_class(*args)
+    @body_classes ||= []
+    raise "call add_body_class for #{args} in the controller when using streaming templates" if @streaming_template && (args - @body_classes).any?
+    @body_classes += args
+  end
+  helper_method :add_body_class
+
+  def body_classes; @body_classes ||= []; end
+  helper_method :body_classes
+
   def get_course_from_section
     if params[:section_id]
       @section = api_find(CourseSection, params.delete(:section_id))
@@ -2271,6 +2289,7 @@ class ApplicationController < ActionController::Base
     js_env hash
   end
 
+  ASSIGNMENT_GROUPS_TO_FETCH_PER_PAGE_ON_ASSIGNMENTS_INDEX = 50
   def set_js_assignment_data
     rights = [:manage_assignments, :manage_grades, :read_grades, :manage]
     permissions = @context.rights_status(@current_user, *rights)
@@ -2279,6 +2298,21 @@ class ApplicationController < ActionController::Base
     permissions[:by_assignment_id] = @context.assignments.map do |assignment|
       [assignment.id, {update: assignment.user_can_update?(@current_user, session)}]
     end.to_h
+
+    current_user_has_been_observer_in_this_course = @context.user_has_been_observer?(@current_user)
+
+    prefetch_xhr(api_v1_course_assignment_groups_url(
+      @context,
+      include: [
+        'assignments',
+        'discussion_topic',
+        (permissions[:manage] || current_user_has_been_observer_in_this_course) && 'all_dates',
+        permissions[:manage] && 'module_ids'
+      ].reject(&:blank?),
+      exclude_response_fields: ['description', 'rubric'],
+      override_assignment_dates: !permissions[:manage],
+      per_page: ASSIGNMENT_GROUPS_TO_FETCH_PER_PAGE_ON_ASSIGNMENTS_INDEX
+    ), id: 'assignment_groups_url')
 
     js_env({
       :URLS => {
@@ -2297,8 +2331,9 @@ class ApplicationController < ActionController::Base
       :assignment_menu_tools => external_tools_display_hashes(:assignment_menu),
       :discussion_topic_menu_tools => external_tools_display_hashes(:discussion_topic_menu),
       :quiz_menu_tools => external_tools_display_hashes(:quiz_menu),
-      :current_user_has_been_observer_in_this_course => @context.user_has_been_observer?(@current_user),
+      :current_user_has_been_observer_in_this_course => current_user_has_been_observer_in_this_course,
       :observed_student_ids => ObserverEnrollment.observed_student_ids(@context, @current_user),
+      apply_assignment_group_weights: @context.apply_group_weights?,
     })
 
     conditional_release_js_env(includes: :active_rules)
@@ -2381,10 +2416,13 @@ class ApplicationController < ActionController::Base
     end
 
     ctx[:user_id] = @current_user.global_id if @current_user
+    ctx[:time_zone] = @current_user.time_zone if @current_user
+    ctx[:developer_key_id] = @access_token.developer_key.global_id if @access_token
     ctx[:real_user_id] = @real_current_user.global_id if @real_current_user
     ctx[:context_type] = @context.class.to_s if @context
     ctx[:context_id] = @context.global_id if @context
     ctx[:context_sis_source_id] = @context.sis_source_id if @context.respond_to?(:sis_source_id)
+    ctx[:context_account_id] = Context.get_account_or_parent_account(@context)&.global_id if @context
 
     if @context_membership
       ctx[:context_role] =
@@ -2403,12 +2441,19 @@ class ApplicationController < ActionController::Base
     end
 
     ctx[:hostname] = request.host
+    ctx[:http_method] = request.method
     ctx[:user_agent] = request.headers['User-Agent']
     ctx[:client_ip] = request.remote_ip
+    ctx[:url] = request.url
     ctx[:producer] = 'canvas'
 
     StringifyIds.recursively_stringify_ids(ctx)
     LiveEvents.set_context(ctx)
+  end
+
+  # makes it so you can use the prefetch_xhr erb helper from controllers. They'll be rendered in _head.html.erb
+  def prefetch_xhr(*args)
+    (@xhrs_to_prefetch_from_controller ||= []) << args
   end
 
   def teardown_live_events_context
@@ -2459,7 +2504,7 @@ class ApplicationController < ActionController::Base
         analytics: @account.service_enabled?(:analytics),
         can_masquerade: @account.grants_right?(@current_user, session, :become_user),
         can_message_users: @account.grants_right?(@current_user, session, :send_messages),
-        can_edit_users: @account.grants_any_right?(@current_user, session, :manage_students, :manage_user_logins),
+        can_edit_users: @account.grants_any_right?(@current_user, session, :manage_user_logins),
         can_manage_groups: @account.grants_right?(@current_user, session, :manage_groups),           # access to view user groups?
         can_manage_admin_users: @account.grants_right?(@current_user, session, :manage_admin_users)  # access to manage user avatars page?
       }

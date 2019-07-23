@@ -18,6 +18,7 @@
 
 import assert from "assert";
 import sinon from "sinon";
+import K5Uploader from '@instructure/k5uploader'
 import * as actions from "../../../src/sidebar/actions/upload";
 import * as filesActions from "../../../src/sidebar/actions/files";
 import * as imagesActions from "../../../src/sidebar/actions/images";
@@ -39,6 +40,26 @@ describe("Upload data actions", () => {
       return Promise.resolve({
         folders: [{ id: 1, name: "course files", parentId: null }]
       });
+    },
+
+    mediaServerSession() {
+      return Promise.resolve({
+        "ks":"averylongstring",
+        "subp_id":"0",
+        "partner_id":"9",
+        "uid":"1234_567",
+        "serverTime":1234,
+        "kaltura_setting": {
+          "uploadUrl": "url.url.url",
+          "entryUrl": "url.url.url",
+          "uiconfUrl": "url.url.url",
+          "partnerData": "data from our partners"
+        }
+      });
+    },
+
+    uploadMediaToCanvas() {
+      return Promise.resolve({"media_object": {"media_id": 2}});
     },
 
     preflightUpload() {
@@ -68,6 +89,7 @@ describe("Upload data actions", () => {
     let { jwt, source } = Object.assign({}, defaults, props);
     return { jwt, source };
   }
+
 
   describe("fetchFolders", () => {
     it("fetches if there are no folders loaded yet", () => {
@@ -441,6 +463,20 @@ describe("Upload data actions", () => {
         sinon.assert.calledWithMatch(Bridge.insertLink, { href: expected });
       });
 
+      it("inserts link with data-canvas-previewable if the content-type is previewable by canvas", () => {
+        const uploadResult = {
+          display_name: 'display_name',
+          url: 'http://somewhere',
+          'content-type': 'application/pdf'
+        }
+        actions.embedUploadResult(uploadResult)
+        sinon.assert.calledWithMatch(Bridge.insertLink, {
+          'data-canvas-previewable': true,
+          title: uploadResult.display_name,
+          href: uploadResult.url
+        })
+      })
+
       it("delegates to fileEmbed for embed data", () => {
         actions.embedUploadResult({ preview_url: "http://a.preview.com/url" });
         sinon.assert.calledWithMatch(Bridge.insertLink, {
@@ -540,5 +576,55 @@ describe("Upload data actions", () => {
       store.dispatch(actions.removePlaceholdersFor('image1'))
       sinon.assert.calledWith(store.spy, { type: 'STOP_MEDIA_UPLOADING' })
     })
+  });
+
+  describe("saveMediaRecording", () => {
+    it("dispatches startLoading when action is called", () => {
+      let store = spiedStore(setupState());
+      return store.dispatch(actions.saveMediaRecording({}, {}, ()=>{})).then(() => {
+        assert.ok(
+          store.spy.calledWith({
+            type: actions.START_LOADING
+          })
+        );
+      });
+    });
+
+    it("dispatches failMediaUpload when error is caught", () => {
+      let store = spiedStore(setupState());
+      return store.dispatch(actions.saveMediaRecording({}, {}, ()=>{})).then(() => {
+        assert.ok(
+          store.spy.args[2][0].type === "FAIL_MEDIA_UPLOAD"
+        );
+      });
+    });
+
+    it("dispatches failMediaUpload when k5.fileError is dispatched", () => {
+      let store = spiedStore(setupState());
+      sinon.stub(K5Uploader.prototype, 'loadUiConf').callsFake(() => 'mock');
+      return store.dispatch(actions.saveMediaRecording({}, {}, ()=>{})).then((uploader) => {
+        uploader.dispatchEvent("K5.fileError", {error: "womp womp"}, uploader);
+        sinon.assert.calledWith(store.spy, { type: 'FAIL_MEDIA_UPLOAD', error: {error: "womp womp"}})
+      });
+    });
+
+    it('dispatches mediaUploadSuccess when K5.complete is dispatched', () => {
+      let store = spiedStore(setupState());
+      return store.dispatch(actions.saveMediaRecording({}, {getBody: () =>{}, dom: {add: ()=>{}, setStyles: () => {}}}, ()=>{})).then( async (uploader) => {
+        uploader.dispatchEvent("K5.complete", {data : "datatatatatatatat"}, uploader);
+        await new Promise(setTimeout)
+        sinon.assert.calledWith(store.spy, { type: 'MEDIA_UPLOAD_SUCCESS'})
+      });
+    });
+
+    it('calls dismiss when upload to canvas has succeed during K5.complete is dispatched', () => {
+      let store = spiedStore(setupState());
+      const fakeDismissDispatch = sinon.spy();
+      return store.dispatch(actions.saveMediaRecording({}, {getBody: () =>{}, dom: {add: ()=>{}, setStyles: () =>{}}}, fakeDismissDispatch)).then( async (uploader) => {
+        uploader.dispatchEvent("K5.complete", {data : "datatatatatatatat"}, uploader);
+        await new Promise(setTimeout)
+        sinon.assert.calledOnce(fakeDismissDispatch);
+      });
+    });
   });
 });

@@ -41,8 +41,8 @@ describe ModeratedGrading::ProvisionalGrade do
       class_name('ModeratedGrading::Selection')
   end
 
-  it { is_expected.to belong_to(:submission) }
-  it { is_expected.to belong_to(:scorer).class_name('User') }
+  it { is_expected.to belong_to(:submission).required }
+  it { is_expected.to belong_to(:scorer).required.class_name('User') }
   it { is_expected.to have_many(:rubric_assessments) }
 
   it { is_expected.to validate_presence_of(:scorer) }
@@ -364,7 +364,7 @@ describe ModeratedGrading::ProvisionalGrade do
 
       expect(prov_assmt.score).to eq 3
 
-      pg.send :publish_rubric_assessments!
+      pg.publish!
 
       real_assmt = sub.rubric_assessments.first
       expect(real_assmt.score).to eq 3
@@ -389,7 +389,7 @@ describe ModeratedGrading::ProvisionalGrade do
 
 
       expect do
-        pg.send :publish_rubric_assessments!
+        pg.publish!
       end.to change { LearningOutcomeResult.count }.by(1)
     end
   end

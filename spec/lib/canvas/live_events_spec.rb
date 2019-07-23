@@ -30,43 +30,33 @@ describe Canvas::LiveEvents do
     )
   end
 
-  context 'when using a custom stream client' do
+  before do
+    LiveEvents.stream_client = FakeStreamClient.new
+  end
 
-    class FakeSettings
-      def call
-        {
-          'kinesis_stream_name' => 'fake_stream',
-          'aws_region' => 'us-east-1'
-        }
-      end
+  class FakeSettings
+    def call
+      {
+        'kinesis_stream_name' => 'fake_stream',
+        'aws_region' => 'us-east-1'
+      }
+    end
+  end
+
+  class FakeStreamClient
+    attr_accessor :data, :stream, :stream_name
+
+    def initialize(stream_name = 'stream')
+      @stream_name = stream_name
     end
 
-    class FakeStreamClient
-      attr_accessor :data
-
-      def put_record(stream_name:, data:, partition_key:) # rubocop:disable Lint/UnusedMethodArgument
-        @data = JSON.parse(data)
-      end
-
-      def body
-        @data['body']
-      end
+    def put_records(stream_name:, records:)
+      @data = records
+      @stream = stream_name
     end
 
-    it 'sends the event message with the injected client' do
-      fake_client = FakeStreamClient.new
-      LiveEvents.stream_client = fake_client
-      LiveEvents.set_context(nil)
-      LiveEvents.settings = FakeSettings.new
-      course = course_model
-      amended_context = described_class.amended_context(course)
-      event_name = 'a_fake_event'
-      payload = { fake: 'yes' }
-
-      described_class.post_event_stringified(event_name, payload, amended_context)
-      run_jobs
-
-      expect(fake_client.body).to eq({ 'fake' => 'yes' })
+    def body
+      @data['body']
     end
   end
 
@@ -136,7 +126,7 @@ describe Canvas::LiveEvents do
       expect_event('group_category_created',
         hash_including(
           context_type: 'Course',
-          context_id: course.global_id.to_s,
+          context_id: course.id.to_s,
           group_limit: 2
         ))
       Canvas::LiveEvents.group_category_created(group_category)
@@ -150,7 +140,7 @@ describe Canvas::LiveEvents do
       expect_event('group_category_updated',
         hash_including(
           context_type: 'Course',
-          context_id: course.global_id.to_s,
+          context_id: course.id.to_s,
           group_limit: 2
         ))
       Canvas::LiveEvents.group_category_updated(group_category)
@@ -499,6 +489,25 @@ describe Canvas::LiveEvents do
       end
     end
 
+
+    describe '.submission_comment_created' do
+      it 'should trigger a submission comment created live event' do
+        comment = submission.submission_comments.create!(
+          comment: "here is a comment",
+          submission_id: submission.id, author_id: @student.id
+        )
+        expect_event('submission_comment_created',{
+          user_id: comment.author_id.to_s,
+          created_at: comment.created_at,
+          submission_id: comment.submission_id.to_s,
+          body: comment.comment,
+          attachment_ids: [],
+          submission_comment_id: comment.id.to_s,
+        }).once
+        Canvas::LiveEvents.submission_comment_created(comment)
+      end
+    end
+
     describe '.plagiarism_resubmit' do
       it "should include the user_id and assignment_id" do
         expect_event('plagiarism_resubmit',
@@ -553,6 +562,23 @@ describe Canvas::LiveEvents do
 
       Canvas::LiveEvents.asset_access([ "assignments", @course ], 'category', 'role', 'participation')
     end
+
+    it "should include filename and display_name if asset is an attachment" do
+      attachment_model
+
+      expect_event('asset_accessed', {
+        asset_type: 'attachment',
+        asset_id: @attachment.global_id.to_s,
+        asset_subtype: nil,
+        category: 'files',
+        role: 'role',
+        level: 'participation',
+        filename: @attachment.filename,
+        display_name: @attachment.display_name
+      }).once
+
+      Canvas::LiveEvents.asset_access(@attachment, 'files', 'role', 'participation')
+    end
   end
 
   describe '.assignment_created' do
@@ -575,7 +601,8 @@ describe Canvas::LiveEvents do
           points_possible: assignment.points_possible,
           lti_assignment_id: assignment.lti_context_id,
           lti_resource_link_id: assignment.lti_resource_link_id,
-          lti_resource_link_id_duplicated_from: assignment.duplicate_of&.lti_resource_link_id
+          lti_resource_link_id_duplicated_from: assignment.duplicate_of&.lti_resource_link_id,
+          submission_types: assignment.submission_types
         })).once
 
       Canvas::LiveEvents.assignment_created(assignment)
@@ -602,7 +629,8 @@ describe Canvas::LiveEvents do
           points_possible: assignment.points_possible,
           lti_assignment_id: assignment.lti_context_id,
           lti_resource_link_id: assignment.lti_resource_link_id,
-          lti_resource_link_id_duplicated_from: assignment.duplicate_of&.lti_resource_link_id
+          lti_resource_link_id_duplicated_from: assignment.duplicate_of&.lti_resource_link_id,
+          submission_types: assignment.submission_types
         })).once
 
       Canvas::LiveEvents.assignment_updated(assignment)
@@ -921,6 +949,26 @@ describe Canvas::LiveEvents do
     end
   end
 
+  describe '.course_progress' do
+    it 'should trigger a course progress live event' do
+      course = course_model
+      user = user_model
+      context_module = course.context_modules.create!
+      # context_module_progression = context_module.context_module_progressions.create!(user_id: user.id, workflow_state: 'completed')
+      context_module_progression = context_module.context_module_progressions.create!(user_id: user.id, workflow_state: 'started')
+
+      expected_event_body = {
+        progress: CourseProgress.new(course, user, read_only: true).to_json,
+        user: { id: user.id.to_s, name: user.name, email: user.email },
+        course: { id: course.id.to_s, name: course.name }
+      }
+
+      expect_event('course_progress', expected_event_body).once
+
+      Canvas::LiveEvents.course_progress(context_module_progression)
+    end
+  end
+
   describe '.discussion_topic_created' do
     it 'should trigger a discussion topic created live event' do
       course = course_model
@@ -945,6 +993,133 @@ describe Canvas::LiveEvents do
       }).once
 
       Canvas::LiveEvents.discussion_topic_created(topic)
+    end
+  end
+
+  describe '.discussion_entry_submitted' do
+    context 'with non graded discussion' do
+      it 'should create a discussion entry created live event' do
+        course_with_student
+        topic = @course.discussion_topics.create!(
+          title: "test title",
+          message: "test body"
+        )
+        entry = topic.discussion_entries.create!(
+          message: "<p>This is a reply</p>",
+          user_id: @student.id
+        )
+
+        expect_event('discussion_entry_submitted', {
+          user_id: entry.user_id.to_s,
+          created_at: entry.created_at,
+          discussion_entry_id: entry.id.to_s,
+          discussion_topic_id: entry.discussion_topic_id.to_s,
+          text: entry.message
+        }).once
+
+        Canvas::LiveEvents.discussion_entry_submitted(entry, nil, nil)
+      end
+    end
+
+    context 'with graded discussion' do
+      it 'should include assignment and submission in created live event' do
+        course_with_student_submissions
+        assignment = @course.assignments.first
+        submission = assignment.submission_for_student_id(@student.id)
+        topic = @course.discussion_topics.create!(
+          title: "test title",
+          message: "test body",
+          assignment_id: assignment.id
+        )
+        entry = topic.discussion_entries.create!(
+          message: "<p>This is a reply</p>",
+          user_id: @student.id
+        )
+
+        expect_event('discussion_entry_submitted', {
+          assignment_id: assignment.id.to_s,
+          submission_id: submission.id.to_s,
+          user_id: entry.user_id.to_s,
+          created_at: entry.created_at,
+          discussion_entry_id: entry.id.to_s,
+          discussion_topic_id: entry.discussion_topic_id.to_s,
+          text: entry.message
+        }).once
+
+        Canvas::LiveEvents.discussion_entry_submitted(entry, assignment.id, submission.id)
+      end
+    end
+  end
+
+  describe '.learning_outcome_result' do
+    let_once :quiz do
+      quiz_model(assignment: assignment_model)
+    end
+
+    let :result do
+      create_and_associate_lor(quiz)
+    end
+
+    def create_and_associate_lor(association_object, associated_asset = nil)
+      assignment_model
+      outcome = @course.created_learning_outcomes.create!(title: 'outcome')
+
+      LearningOutcomeResult.new(
+        alignment: ContentTag.create!({
+          title: 'content',
+          context: @course,
+          learning_outcome: outcome
+        })
+      ).tap do |lor|
+        lor.association_object = association_object
+        lor.context = @course
+        lor.associated_asset = associated_asset || association_object
+        lor.save!
+      end
+    end
+
+    context 'created' do
+      it 'should include result in created live event' do
+        expect_event('learning_outcome_result_created', {
+          learning_outcome_id: result.learning_outcome_id.to_s,
+          mastery: result.learning_outcome_id,
+          score: result.score,
+          created_at: result.created_at,
+          attempt: result.attempt,
+          possible: result.possible,
+          original_score: result.original_score,
+          original_possible: result.original_possible,
+          original_mastery: result.original_mastery,
+          assessed_at: result.assessed_at,
+          title: result.title,
+          percent: result.percent
+        }).once
+
+        Canvas::LiveEvents.learning_outcome_result_created(result)
+      end
+    end
+
+    context 'updated' do
+      it 'should include result in updated live event' do
+        result.update!(attempt: 1)
+        expect_event('learning_outcome_result_updated', {
+          learning_outcome_id: result.learning_outcome_id.to_s,
+          mastery: result.learning_outcome_id,
+          score: result.score,
+          created_at: result.created_at,
+          updated_at: result.updated_at,
+          attempt: result.attempt,
+          possible: result.possible,
+          original_score: result.original_score,
+          original_possible: result.original_possible,
+          original_mastery: result.original_mastery,
+          assessed_at: result.assessed_at,
+          title: result.title,
+          percent: result.percent
+        }).once
+
+        Canvas::LiveEvents.learning_outcome_result_updated(result)
+      end
     end
   end
 end

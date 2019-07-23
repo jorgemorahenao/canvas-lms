@@ -17,6 +17,9 @@
   "align_right_9bad3ac1": {
     "message": "Align right"
   },
+  "alignment_and_indentation_f7de34bf": {
+    "message": "Alignment and Indentation"
+  },
   "all_4321c3a1": {
     "message": "All"
   },
@@ -28,6 +31,9 @@
   },
   "alternative_text_a834dcad": {
     "message": "Alternative text:"
+  },
+  "an_error_occurred_generating_the_file_preview_cf259955": {
+    "message": "An error occurred generating the file preview"
   },
   "an_image_is_still_being_uploaded_if_you_continue_t_7d494bac": {
     "message": "An image is still being uploaded, if you continue the image will not be embedded properly."
@@ -43,6 +49,9 @@
     "message": "Assignments",
     "description": "Title of Sidebar accordion tab containing links to assignments."
   },
+  "automatically_open_an_in_line_preview_preview_disp_ed784ffe": {
+    "message": "Automatically open an in-line preview. (Preview displays only after saving)"
+  },
   "c_2001_acme_inc_283f7f80": {
     "message": "(c) 2001 Acme Inc."
   },
@@ -51,6 +60,9 @@
   },
   "cancel_image_upload_2c771950": {
     "message": "Cancel image upload"
+  },
+  "canvas_plugins_705a5016": {
+    "message": "Canvas Plugins"
   },
   "cc_attribution_f6de631f": {
     "message": "CC Attribution"
@@ -79,8 +91,8 @@
   "circle_unordered_list_9e3a0763": {
     "message": "circle unordered list"
   },
-  "clear_upload_34efa419": {
-    "message": "Clear Upload"
+  "clear_selected_file_82388e50": {
+    "message": "Clear selected file"
   },
   "click_any_file_to_insert_a_download_link_for_that__a708fa4c": {
     "message": "Click any file to insert a download link for that file."
@@ -102,6 +114,9 @@
   },
   "click_to_insert_a_link_to_this_item_39794098": {
     "message": "Click to insert a link to this item."
+  },
+  "close_a_menu_or_dialog_also_returns_you_to_the_edi_739079e6": {
+    "message": "Close a menu or dialog. Also returns you to the editor area"
   },
   "close_d634289d": {
     "message": "Close"
@@ -130,6 +145,9 @@
   "count_plural_0_0_words_one_1_word_other_words_acf32eca": {
     "message": "{ count, plural,\n     =0 {0 words}\n    one {1 word}\n  other {# words}\n}"
   },
+  "count_plural_one_item_loaded_other_items_loaded_857023b7": {
+    "message": "{ count, plural,\n    one {# item loaded}\n  other {# items loaded}\n}"
+  },
   "course_documents_104d76e0": {
     "message": "Course Documents"
   },
@@ -138,9 +156,6 @@
   },
   "course_links_b56959b9": {
     "message": "Course Links"
-  },
-  "course_media_ec759ad": {
-    "message": "Course Media"
   },
   "course_navigation_dd035109": {
     "message": "Course Navigation",
@@ -176,6 +191,12 @@
   "describe_the_image_e65d2e32": {
     "message": "(Describe the image)"
   },
+  "directionality_ebcae6d0": {
+    "message": "directionality"
+  },
+  "disable_in_line_preview_2a675175": {
+    "message": "Disable in-line preview."
+  },
   "discussions_a5f96392": {
     "message": "Discussions",
     "description": "Title of Sidebar accordion tab containing links to discussions."
@@ -195,8 +216,14 @@
   "done_54e3d4b6": {
     "message": "Done"
   },
+  "drag_a_file_here_39357b48": {
+    "message": "Drag a File Here"
+  },
   "drag_and_drop_or_click_to_browse_your_computer_60772d6d": {
     "message": "Drag and drop, or click to browse your computer"
+  },
+  "drag_handle_use_up_and_down_arrows_to_resize_e29eae5c": {
+    "message": "Drag handle. Use up and down arrows to resize"
   },
   "due_multiple_dates_cc0ee3f5": {
     "message": "Due: Multiple Dates"
@@ -207,14 +234,32 @@
   "edit_link_7f53bebb": {
     "message": "Edit Link"
   },
+  "editor_statusbar_26ac81fc": {
+    "message": "Editor Statusbar"
+  },
+  "embed_828fac4a": {
+    "message": "Embed"
+  },
   "embed_image_1080badc": {
     "message": "Embed Image"
+  },
+  "embed_options_tray_901cfd19": {
+    "message": "Embed Options Tray"
+  },
+  "embed_preview_2d741e1f": {
+    "message": "Embed Preview"
+  },
+  "embed_video_code_703e10f2": {
+    "message": "Embed Video Code"
   },
   "enter_search_terms_e397b1f0": {
     "message": "enter search terms"
   },
   "enter_the_alternative_text_for_this_image_88047c47": {
     "message": "Enter the alternative text for this image"
+  },
+  "error_uploading_video_audio_recording_16d9730a": {
+    "message": "Error uploading video/audio recording"
   },
   "expand_to_see_types_f5d29352": {
     "message": "Expand to see { types }"
@@ -228,8 +273,17 @@
   "file_upload_form_4aaad554": {
     "message": "File Upload Form"
   },
-  "filename_preview_ffaa1515": {
-    "message": "{ filename } preview"
+  "file_url_c12b64be": {
+    "message": "File URL"
+  },
+  "filename_file_icon_602eb5de": {
+    "message": "{ filename } file icon"
+  },
+  "filename_image_preview_6cef8f26": {
+    "message": "{ filename } image preview"
+  },
+  "filename_text_preview_e41ca2d8": {
+    "message": "{ filename } text preview"
   },
   "files_c300e900": {
     "message": "Files",
@@ -241,8 +295,23 @@
   "finish_bc343002": {
     "message": "Finish"
   },
+  "focus_the_popup_context_toolbar_7979f4f8": {
+    "message": "Focus the popup context toolbar"
+  },
   "folder_705fd2d7": {
     "message": "Folder"
+  },
+  "formatting_5b143aa8": {
+    "message": "Formatting"
+  },
+  "generating_preview_45b53be0": {
+    "message": "Generating preview..."
+  },
+  "go_to_the_editor_s_menubar_e6674c81": {
+    "message": "Go to the editor''s menubar"
+  },
+  "go_to_the_editor_s_toolbar_a5cb875f": {
+    "message": "Go to the editor''s toolbar"
   },
   "grades_a61eba0a": {
     "message": "Grades"
@@ -272,9 +341,6 @@
   "image_upload_form_7b74079a": {
     "message": "Image Upload Form"
   },
-  "image_url_2aee2734": {
-    "message": "Image URL"
-  },
   "images_7ce26570": {
     "message": "Images",
     "description": "Title for RCE button to embed an image"
@@ -296,12 +362,20 @@
   "invalid_file_type_881cc9b2": {
     "message": "Invalid file type"
   },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "Keyboard Shortcuts"
+  },
   "large_9c5e80e7": {
     "message": "Large"
   },
+  "left_to_right_d6da6d7e": {
+    "message": "left to right"
+  },
   "link_7262adec": {
-    "message": "Link",
-    "description": "Fallback title attribute on an unnamed link inserted from the sidebar."
+    "message": "Link"
+  },
+  "link_options_a16b758b": {
+    "message": "Link Options"
   },
   "link_to_a_new_page_6c4ad034": {
     "message": "Link to a New Page"
@@ -316,6 +390,9 @@
     "message": "Links",
     "description": "Title of Sidebar tab containing links to course pages."
   },
+  "load_more_35d33c7": {
+    "message": "Load More"
+  },
   "load_more_results_460f49a9": {
     "message": "Load more results"
   },
@@ -328,14 +405,14 @@
   "loading_failed_b3524381": {
     "message": "Loading failed..."
   },
+  "loading_failed_e6a9d8ef": {
+    "message": "Loading failed."
+  },
   "loading_folders_8d4d5d5a": {
     "message": "Loading folders..."
   },
-  "loading_more_results_def6df65": {
-    "message": "Loading more results..."
-  },
-  "media_af190855": {
-    "message": "Media"
+  "loading_media_f3455841": {
+    "message": "Loading media"
   },
   "medium_5a8e9ead": {
     "message": "Medium"
@@ -343,9 +420,18 @@
   "mic_a7f3d311": {
     "message": "Mic"
   },
+  "miscellaneous_and_lti_5bac6583": {
+    "message": "Miscellaneous and LTI"
+  },
   "modules_c4325335": {
     "message": "Modules",
     "description": "Title of Sidebar accordion tab containing links to course modules."
+  },
+  "navigate_through_the_menu_or_toolbar_415a4e50": {
+    "message": "Navigate through the menu or toolbar"
+  },
+  "next_page_d2a39853": {
+    "message": "Next Page"
   },
   "no_alt_text_decorative_image_f318fc0e": {
     "message": "No Alt Text (Decorative Image)"
@@ -356,11 +442,17 @@
   "no_video_1ed00b26": {
     "message": "No Video"
   },
+  "open_this_keyboard_shortcuts_dialog_9658b83a": {
+    "message": "Open this keyboard shortcuts dialog"
+  },
   "options_3ab0ea65": {
     "message": "Options"
   },
   "ordered_and_unordered_lists_cfadfc38": {
     "message": "Ordered and Unordered Lists"
+  },
+  "other_editor_shortcuts_may_be_found_at_404aba4a": {
+    "message": "Other editor shortcuts may be found at"
   },
   "pages_e5414c2c": {
     "message": "Pages",
@@ -390,6 +482,9 @@
   "preview_a3f8f854": {
     "message": "PREVIEW"
   },
+  "previous_page_928fc112": {
+    "message": "Previous Page"
+  },
   "published_c944a23d": {
     "message": "published"
   },
@@ -416,6 +511,9 @@
   "rich_content_editor_2708ef21": {
     "message": "Rich Content Editor"
   },
+  "right_to_left_ec223c81": {
+    "message": "right to left"
+  },
   "save_11a80ec3": {
     "message": "Save"
   },
@@ -425,14 +523,29 @@
   "search_flickr_6884b518": {
     "message": "Search Flickr"
   },
+  "search_term_b2d2235": {
+    "message": "Search Term"
+  },
   "select_a_file_53ba40ac": {
     "message": "Select a file"
   },
   "select_a_folder_to_upload_your_file_into_b82d12b": {
     "message": "Select a folder to upload your file into"
   },
+  "selected_274ce24f": {
+    "message": "Selected"
+  },
+  "show_embed_options_ef8d7ef": {
+    "message": "Show embed options"
+  },
   "show_image_options_1e2ecc6b": {
     "message": "Show image options"
+  },
+  "show_link_options_545338fd": {
+    "message": "Show link options"
+  },
+  "show_video_options_6ed3721a": {
+    "message": "Show video options"
   },
   "size_b30e1077": {
     "message": "Size"
@@ -461,6 +574,9 @@
   "start_recording_9a65141a": {
     "message": "Start Recording"
   },
+  "styles_2aa721ef": {
+    "message": "Styles"
+  },
   "subheader_2b87606d": {
     "message": "Subheader"
   },
@@ -481,6 +597,12 @@
   },
   "syllabus_f191f65b": {
     "message": "Syllabus"
+  },
+  "tab_arrows_4cf5abfc": {
+    "message": "TAB/Arrows"
+  },
+  "text_7f4593da": {
+    "message": "Text"
   },
   "the_material_is_in_the_public_domain_279c39a3": {
     "message": "The material is in the public domain"
@@ -506,9 +628,6 @@
   "unpublished_dfd8801": {
     "message": "unpublished"
   },
-  "unsplash_ee049fbf": {
-    "message": "Unsplash"
-  },
   "untitled_16aa4f2b": {
     "message": "Untitled"
   },
@@ -520,6 +639,9 @@
   },
   "upload_a_new_image_890df275": {
     "message": "Upload a new image"
+  },
+  "upload_document_253f0478": {
+    "message": "Upload Document"
   },
   "upload_file_fd2361b8": {
     "message": "Upload File"
@@ -547,6 +669,15 @@
   },
   "used_by_screen_readers_to_describe_the_content_of__b1e76d9e": {
     "message": "Used by screen readers to describe the content of an image"
+  },
+  "video_audio_recording_uploaded_6af5d378": {
+    "message": "Video/audio recording uploaded"
+  },
+  "video_options_24ef6e5d": {
+    "message": "Video Options"
+  },
+  "video_options_tray_3b9809a5": {
+    "message": "Video Options Tray"
   },
   "video_player_b371005": {
     "message": "Video Player"

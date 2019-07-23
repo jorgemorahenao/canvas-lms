@@ -19,6 +19,11 @@
 import htmlEscape from "escape-html";
 import clickCallback from "./clickCallback";
 import formatMessage from "../../../format-message";
+import TrayController from './VideoOptionsTray/TrayController'
+import {getContentFromElement, VIDEO_EMBED_TYPE} from '../shared/ContentSelection'
+import {globalRegistry} from '../instructure-context-bindings/BindingRegistry'
+
+const trayController = new TrayController()
 
 tinymce.create("tinymce.plugins.InstructureRecord", {
   init: function(ed) {
@@ -39,17 +44,53 @@ tinymce.create("tinymce.plugins.InstructureRecord", {
             onAction: () => ed.execCommand("instructureRecord"),
           },
 
-          {
-            type: 'menuitem',
-            text: formatMessage('Course Media'), // This item needs to be adjusted to be user/context aware, i.e. Use Media
-            onAction() {
-              ed.focus(true) // activate the editor without changing focus
-            }
-          }
+          // {
+          //   type: 'menuitem',
+          //   text: formatMessage('Course Media'), // This item needs to be adjusted to be user/context aware, i.e. Use Media
+          //   onAction() {
+          //     ed.focus(true) // activate the editor without changing focus
+          //   }
+          // }
         ]
         callback(items);
       }
     });
+
+    /*
+     * Register the Video "Options" button that will open the Video Options
+     * tray.
+     */
+    const buttonAriaLabel = formatMessage('Show video options')
+    ed.ui.registry.addButton('instructure-video-options', {
+      onAction() {
+        // show the tray
+        trayController.showTrayForEditor(ed)
+      },
+
+      onSetup() {
+        globalRegistry.bindToolbarToEditor(ed, buttonAriaLabel)
+      },
+
+      text: formatMessage('Options'),
+      tooltip: buttonAriaLabel
+    });
+
+    const defaultFocusSelector = `.tox-pop__dialog button[aria-label="${buttonAriaLabel}"]`
+    globalRegistry.addContextKeydownListener(ed, defaultFocusSelector)
+
+    function isVideoElement($el) {
+      return getContentFromElement($el).type === VIDEO_EMBED_TYPE
+    }
+
+    ed.ui.registry.addContextToolbar('instructure-video-toolbar', {
+      items: 'instructure-video-options',
+      position: 'node',
+      predicate: false,
+      scope: 'node'
+    })
+  },
+  remove(editor) {
+    trayController.hideTrayForEditor(editor)
   }
 });
 

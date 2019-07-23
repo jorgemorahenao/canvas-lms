@@ -16,7 +16,7 @@
 // with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-import I18n from 'i18n!outcomes'
+import I18n from 'i18n!OutcomeView'
 import numberHelper from 'jsx/shared/helpers/numberHelper'
 import $ from 'jquery'
 import _ from 'underscore'
@@ -65,25 +65,14 @@ export default class OutcomeView extends OutcomeContentBase {
     )
   }
 
-  constructor({setQuizMastery, useForScoring}) {
-    {
-      // Hack: trick Babel/TypeScript into allowing this before super.
-      if (false) { super(); }
-      let thisFn = (() => { return this; }).toString();
-      let thisName = thisFn.match(/_this\d*/)[0];
-      eval(`${thisName} = this;`);
-    }
-    this.editRating = this.editRating.bind(this)
-    this.deleteRating = this.deleteRating.bind(this)
-    this.insertRating = this.insertRating.bind(this)
-    this.updateCalcMethod = this.updateCalcMethod.bind(this)
+  initialize({setQuizMastery, useForScoring}) {
     this.setQuizMastery = setQuizMastery
     this.useForScoring = useForScoring
-    super(...arguments)
     this.calculationMethodFormView = new CalculationMethodFormView({
       model: this.model
     })
     this.originalConfirmableValues = this.getFormData()
+    super.initialize(...arguments)
   }
 
   submit(event) {

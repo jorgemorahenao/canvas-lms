@@ -17,7 +17,7 @@
 %>
 
 <%
-  content_for :page_title, join_title(t(:page_title, "Course Details"), @context.name)
+  provide :page_title, join_title(t(:page_title, "Course Details"), @context.name)
   css_bundle :course_settings
   js_bundle :course_settings
   @active_tab = "settings"
@@ -36,7 +36,7 @@
   master_course = blueprint_subscription&.master_template&.course
 %>
 
-<% content_for :right_side do %>
+<% provide :right_side do %>
   <%= render :partial => 'settings_sidebar', :locals => { :blueprint_subscription => blueprint_subscription } %>
 <% end %>
 
@@ -321,6 +321,17 @@
         </td>
       <% end %>
       </tr>
+      <% if @context.feature_enabled?(:new_gradebook) %>
+        <tr>
+          <td class="form-label">
+            <label for="course_large_course"><%= t("Large Course:") %></label>
+          </td>
+          <td id="course_large_course">
+            <%= f.check_box :filter_speed_grader_by_student_group, disabled: !can_manage %>
+            <%= f.label :filter_speed_grader_by_student_group, t("Launch SpeedGrader Filtered by Student Group") %>
+          </td>
+        </tr>
+      <% end %>
       <tr>
         <td class="form-label">
           <label for="course_grading_scheme"><%= before_label('grading_scheme', %{Grading Scheme}) %></label>

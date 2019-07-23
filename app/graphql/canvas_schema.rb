@@ -16,6 +16,8 @@
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+require 'graphql_custom_connections'
+
 class CanvasSchema < GraphQL::Schema
   use GraphQL::Execution::Interpreter
 
@@ -63,9 +65,12 @@ class CanvasSchema < GraphQL::Schema
     when Progress then Types::ProgressType
     when MediaObject then Types::MediaObjectType
     when ContentTag
-      if !type.nil? && type.name == "ModuleItemInterface"
-        return Types::ExternalUrlType if obj.content_type == "ExternalUrl"
-        return Types::ModuleExternalToolType if obj.content_type == "ContextExternalTool"
+      if type&.name == "ModuleItemInterface"
+        case obj.content_type
+        when "ContextModuleSubHeader" then Types::ModuleSubHeaderType
+        when "ExternalUrl" then Types::ExternalUrlType
+        when "ContextExternalTool" then Types::ModuleExternalToolType
+        end
       else
         Types::ModuleItemType
       end
@@ -75,5 +80,5 @@ class CanvasSchema < GraphQL::Schema
 
   orphan_types [Types::PageType, Types::FileType, Types::ExternalUrlType,
                 Types::ExternalToolType, Types::ModuleExternalToolType,
-                Types::ProgressType]
+                Types::ProgressType, Types::ModuleSubHeaderType]
 end

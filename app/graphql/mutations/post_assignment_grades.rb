@@ -34,7 +34,7 @@ class Mutations::PostAssignmentGrades < Mutations::BaseMutation
     end
 
     verify_authorized_action!(assignment, :grade)
-    raise GraphQL::ExecutionError, "Post Policies feature not enabled" unless course.feature_enabled?(:post_policies)
+    raise GraphQL::ExecutionError, "Post Policies feature not enabled" unless course.post_policies_enabled?
 
     unless assignment.grades_published?
       raise GraphQL::ExecutionError, "Assignments under moderation cannot be posted before grades are published"
@@ -45,6 +45,8 @@ class Mutations::PostAssignmentGrades < Mutations::BaseMutation
     end
 
     submissions_scope = input[:graded_only] ? assignment.submissions.graded : assignment.submissions
+    submissions_scope = course.apply_enrollment_visibility(submissions_scope.joins(user: :enrollments), current_user)
+
     submission_ids = submissions_scope.pluck(:id)
     progress = course.progresses.new(tag: "post_assignment_grades")
 

@@ -92,6 +92,21 @@ describe Lti::LtiAdvantageAdapter do
       end
     end
 
+    context 'when target_link_uri is set' do
+      let(:launch_url) { 'https://www.cool-tool.com/test?foo=bar' }
+      let(:opts) do
+        {
+          resource_type: 'course_navigation',
+          domain: 'test.com',
+          launch_url: launch_url
+        }
+      end
+
+      it 'sets the target_link_uri in the id_token' do
+        expect(params['https://purl.imsglobal.org/spec/lti/claim/target_link_uri']).to eq launch_url
+      end
+    end
+
     it "generates a resource link request if the tool's resource type setting is 'ResourceLinkRequest'" do
       expect(params["https://purl.imsglobal.org/spec/lti/claim/message_type"]).to eq "LtiResourceLinkRequest"
     end
@@ -101,7 +116,8 @@ describe Lti::LtiAdvantageAdapter do
         "iss",
         "login_hint",
         "target_link_uri",
-        "lti_message_hint"
+        "lti_message_hint",
+        "canvas_region"
       ]
     end
 
@@ -113,8 +129,37 @@ describe Lti::LtiAdvantageAdapter do
       expect(login_message['target_link_uri']).to eq tool.url
     end
 
+    it 'sets the "canvas_region" to "not_configured"' do
+      expect(login_message['canvas_region']).to eq 'not_configured'
+    end
+
     it 'sets the domain in the message hint' do
       expect(Canvas::Security.decode_jwt(login_message['lti_message_hint'])['canvas_domain']).to eq 'test.com'
+    end
+
+    context 'when the DB has a region configured' do
+      specs_require_sharding
+
+      let(:region) { 'us-east-1' }
+      let(:config_stub) do
+        config = @shard1.database_server.config.dup
+        config[:region] = region
+        config
+      end
+      let(:course) do
+        @shard1.activate do
+          course_with_student
+          @course
+        end
+      end
+
+      before do
+        allow(@shard1.database_server).to receive(:config).and_return(config_stub)
+      end
+
+      it 'sets the "canvas_region" to the configured region' do
+        expect(login_message['canvas_region']).to eq region
+      end
     end
 
     context 'when a "launch_url" is set in the options hash' do

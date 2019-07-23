@@ -18,7 +18,7 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import {waitForElement, wait} from 'react-testing-library'
+import {waitForElement, wait} from '@testing-library/react'
 
 import HideAssignmentGradesTray from 'jsx/grading/HideAssignmentGradesTray'
 import * as Api from 'jsx/grading/HideAssignmentGradesTray/Api'
@@ -321,6 +321,14 @@ QUnit.module('HideAssignmentGradesTray', suiteHooks => {
         const successMessage = 'Success! Grades have been hidden for Math 1.1.'
         await clickHide()
         strictEqual(showFlashAlertStub.firstCall.args[0].message, successMessage)
+      })
+
+      test('does not render an alert if the tray is launched from SpeedGrader and assignment is anonymous', async () => {
+        context.containerName = 'SPEED_GRADER'
+        context.assignment.anonymousGrading = true
+        await show()
+        await clickHide()
+        strictEqual(showFlashAlertStub.callCount, 0)
       })
 
       test('tray is closed after hiding is finished', async () => {

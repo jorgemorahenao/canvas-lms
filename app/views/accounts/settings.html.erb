@@ -18,7 +18,7 @@
   add_crumb t(:settings_crumb, "Settings")
   js_bundle :account_settings
   css_bundle :account_settings, :reports, :tinymce
-  content_for :page_title, t(:page_title, "Account Settings")
+  provide :page_title, t(:page_title, "Account Settings")
   if can_do(@context, @current_user, :manage_storage_quotas)
     js_env :ACCOUNT => {
       'id' => @context.id,
@@ -30,24 +30,23 @@
     }
   end
 %>
-<% content_for :right_side do %>
+<% provide :right_side do %>
   <%= render :partial => "additional_settings_right_side" %>
 <% end %>
 <h1 class='screenreader-only'><%= t(:page_header_title, "Account Settings") %></h1>
-<% content_for :stylesheets do %>
-  <style type="text/css" media="screen">
-    fieldset {
-      margin: 2em 0;
-    }
-    fieldset.nested {
-      margin-top: 0;
-      margin-<%= direction('left') %>: 20px;
-    }
-    legend{
-      font-size: 1.1em;
-    }
-  </style>
-<% end %>
+
+<style type="text/css" media="screen">
+  fieldset {
+    margin: 2em 0;
+  }
+  fieldset.nested {
+    margin-top: 0;
+    margin-<%= direction('left') %>: 20px;
+  }
+  legend{
+    font-size: 1.1em;
+  }
+</style>
 
 <div id="account_settings_tabs" style="display:none;" class="ui-tabs-minimal">
   <ul>
@@ -62,7 +61,9 @@
     <% end %>
     <li><a href="#tab-users" id="tab-users-link"><%= t(:tab_admins, "Admins") %></a></li>
     <li><a href="#tab-announcements" id="tab-announcements-link"><%= t(:tab_announcements, "Announcements") %></a></li>
-    <li><a href="#tab-reports" id="tab-reports-link"><%= t(:tab_reports, "Reports") %></a></li>
+    <% if can_do(@context, @current_user, :read_reports) %>
+      <li><a href="#tab-reports" id="tab-reports-link"><%= t(:tab_reports, "Reports") %></a></li>
+    <% end %>
     <% if can_do(@context, @current_user, :read_as_admin) %>
       <li><a href="#tab-tools" id="tab-tools-link"><%= t(:tab_external_tools, "Apps") %></a></li>
     <% end %>
@@ -70,7 +71,14 @@
       <li><a href="#tab-alerts" id="tab-alerts-link"><%= t(:tab_alerts, "Alerts") %></a></li>
     <% end %>
     <% if can_do(@context, @current_user, :manage_feature_flags) %>
-      <li><a href="#tab-features" id="tab-features-link"><%= t(:feature_options, "Feature Options") %></a></li>
+      <li><a href="#tab-features" id="tab-features-link">
+        <% if @account.root_account.feature_enabled?(:new_features_ui) %>
+          <%= t(:feature_preview, "Feature Preview") %>
+        <% else %>
+          <%= t(:feature_options, "Feature Options") %>
+        <% end %>
+        </a>
+      </li>
     <% end %>
     <% if @account.root_account.feature_enabled?(:javascript_csp) && can_do(@context, @current_user, :manage_account_settings) && !@account.site_admin? %>
       <li><a href="#tab-security" id="tab-security-link"><%= t("Security") %></a></li>
@@ -407,6 +415,12 @@
                     <div id="old_sis_integrations">
                       <%= f.check_box :allow_sis_import, :checked => @account.allow_sis_import %>
                       <%= f.label :allow_sis_import, t("SIS imports") %>
+                    </div>
+                    <div>
+                      <%= f.fields_for :settings do |settings| %>
+                        <%= settings.check_box :include_integration_ids_in_gradebook_exports, :checked => @account.settings[:include_integration_ids_in_gradebook_exports] == true %>
+                        <%= settings.label :include_integration_ids_in_gradebook_exports, t("Include Integration IDs in the gradebook exports.") %>
+                      <% end %>
                     </div>
                   <% end %>
 

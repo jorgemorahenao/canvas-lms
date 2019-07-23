@@ -60,6 +60,14 @@ module RCENextPage
     f('#rcs-LinkToNewPage-submit')
   end
 
+  def wiki_body
+    f('#tinymce')
+  end
+
+  def wiki_body_paragraph
+    f('#tinymce p')
+  end
+
   def wiki_body_anchor
     f('#tinymce p a')
   end
@@ -122,8 +130,48 @@ module RCENextPage
     possibly_hidden_toolbar_button('button[aria-label="Images"]')
   end
 
+  def media_toolbar_button
+    possibly_hidden_toolbar_button('button[aria-label="Record/Upload Media"]')
+  end
+
+  def document_toolbar_button
+    possibly_hidden_toolbar_button('button[aria-label="Documents"]')
+  end
+
   def course_images
     f('[role="menuitem"][title="Course Images"]')
+  end
+
+  def upload_image_button
+    f('[role="menuitem"][title="Upload Image"]')
+  end
+
+  def upload_image_modal
+    f('[role="dialog"][aria-label="Upload Image"')
+  end
+
+  def image_options_button
+    f('button[aria-label="Show image options"]')
+  end
+
+  def image_options_tray
+    f('[role="dialog"][aria-label="Image Options Tray"]')
+  end
+
+  def upload_media_button
+    f('[role="menuitem"][title="Upload/Record Media"]')
+  end
+
+  def upload_media_modal
+    f('[role="dialog"][aria-label="Upload Media"')
+  end
+
+  def upload_document_button
+    f('[role="menuitem"][title="Upload Document"]')
+  end
+
+  def upload_document_modal
+    f('[role="dialog"][aria-label="Upload File"')
   end
 
   def rce_page_body_ifr_id
@@ -131,7 +179,7 @@ module RCENextPage
   end
 
   def course_item_link(title)
-    fj("[data-testid='instructure_links-Link'] button:contains('#{title}')")
+    fj("[data-testid='instructure_links-Link'] [role='button']:contains('#{title}')")
   end
 
   def more_toolbar_button
@@ -139,11 +187,11 @@ module RCENextPage
   end
 
   def list_toggle_button
-    # put side arrow to switch list locator here
+    f('[role="button"][title="Ordered and Unordered Lists"] .tox-split-button__chevron')
   end
 
   def bullet_list_button
-    # put bullet list button locator here
+    f('[role="menuitemcheckbox"][title="default bulleted unordered list"]')
   end
 
   def numbered_list_button
@@ -194,6 +242,38 @@ module RCENextPage
     # put align right button locator here
   end
 
+  def directionality_button
+    f('[role="button"][title="directionality"]')
+  end
+
+  def directionality_toggle_button
+    f('[role="button"][title="directionality"] .tox-split-button__chevron')
+  end
+
+  def right_to_left_button
+    f('[role="menuitemcheckbox"][title="right to left"]')
+  end
+
+  def formatting_dropdown
+    f("button[aria-label='Blocks'")
+  end
+
+  def header_option
+    f('[role="menuitemcheckbox"][title="Header"]')
+  end
+
+  def subheader_option
+    f('[role="menuitemcheckbox"][title=" Subheader"]')
+  end
+
+  def small_header_option
+    f('[role="menuitemcheckbox"][title=" Small header"]')
+  end
+
+  def preformatted_option
+    f('[role="menuitemcheckbox"][title=" Preformatted"]')
+  end
+
   def rce_next_toolbar
     f(".tox-toolbar__primary")
   end
@@ -207,7 +287,31 @@ module RCENextPage
   end
 
   def tray_container
-    f('[data-cid="Tray Portal"]')
+    f('[data-cid="Tray"]')
+  end
+
+  def display_text_link_option
+    fj('label:contains("Display Text Link (Opens in a new tab)")')
+  end
+
+  def image_options_done_button
+    fj('[aria-label="Image Options Tray"] button:contains("Done")')
+  end
+
+  def visible_keyboard_shortcut_button
+    ffj('button:has([name="IconKeyboardShortcuts"])')[1]
+  end
+
+  def keyboard_shortcut_modal
+    f('[role="dialog"][aria-label="Keyboard Shortcuts"]')
+  end
+
+  def alt_text_textbox
+    f('textarea[aria-describedby="alt-text-label-tooltip"]')
+  end
+
+  def decorative_options_checkbox
+    f('[data-cid="Checkbox"]')
   end
 
   # ---------------------- Actions ----------------------
@@ -280,8 +384,31 @@ module RCENextPage
     images_toolbar_button.click
   end
 
+  def click_media_toolbar_button
+    media_toolbar_button.click
+  end
+
+  def click_document_toolbar_button
+    document_toolbar_button.click
+  end
+
   def click_course_images
     course_images.click
+    wait_for_ajaximations
+  end
+
+  def click_upload_image
+    upload_image_button.click
+    wait_for_ajaximations
+  end
+
+  def click_upload_media
+    upload_media_button.click
+    wait_for_ajaximations
+  end
+
+  def click_upload_document
+    upload_document_button.click
     wait_for_ajaximations
   end
 
@@ -341,11 +468,67 @@ module RCENextPage
     align_right_button.click
   end
 
+  def click_directionality_button
+    directionality_button.click
+  end
+
+  def click_directionality_toggle_button
+    directionality_toggle_button.click
+  end
+
+  def click_right_to_left_option
+    right_to_left_button.click
+  end
+
+  def click_formatting_dropdown
+    formatting_dropdown.click
+  end
+
+  def click_header_option
+    header_option.click
+  end
+
+  def click_subheader_option
+    subheader_option.click
+  end
+
+  def click_small_header_option
+    small_header_option.click
+  end
+
+  def click_preformatted_option
+    preformatted_option.click
+  end
+
   def click_editor_window
     editor_window.click
   end
 
   def click_a11y_checker_button
     a11y_checker_button.click
+  end
+
+  def click_image_options_button
+    image_options_button.click
+  end
+
+  def click_in_body_image(title)
+    in_body_image(title).click
+  end
+
+  def click_display_text_link_option
+    display_text_link_option.click
+  end
+
+  def click_image_options_done_button
+    image_options_done_button.click
+  end
+
+  def click_visible_keyboard_shortcut_button
+    visible_keyboard_shortcut_button.click
+  end
+
+  def click_decorative_options_checkbox
+    decorative_options_checkbox.click
   end
 end

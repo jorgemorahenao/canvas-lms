@@ -17,7 +17,7 @@
  */
 
 import React from 'react'
-import {render, waitForElement} from 'react-testing-library'
+import {render, waitForElement, fireEvent} from '@testing-library/react'
 import TeacherQuery from '../../TeacherQuery'
 import TeacherView from '../../TeacherView'
 
@@ -51,19 +51,23 @@ export function renderTeacherQuery(assignment, additionalApolloMocks = []) {
 
 export async function renderTeacherQueryAndWaitForResult(assignment, additionalApolloMocks) {
   const fns = renderTeacherQuery(assignment, additionalApolloMocks)
-  await waitForElement(() => fns.getByText(assignment.name))
+  await waitForElement(() => fns.getAllByText(assignment.name)[0])
   return fns
 }
 
 export function renderTeacherView(
   assignment = mockAssignment(),
   additionalApolloMocks = [],
-  teacherViewProps = {}
+  teacherViewProps = {},
+  activeTabName = null
 ) {
   const fns = render(
     <CanvasValidatedMockedProvider mocks={additionalApolloMocks} addTypename={false}>
       <TeacherView assignment={assignment} {...teacherViewProps} />
     </CanvasValidatedMockedProvider>
   )
+  if (activeTabName) {
+    fireEvent.click(fns.getAllByText(new RegExp(activeTabName, 'i'))[0])
+  }
   return fns
 }

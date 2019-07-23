@@ -26,6 +26,9 @@
   "cancel_image_upload_2c771950": {
     "message": "ביטול העלאת תמונה"
   },
+  "canvas_plugins_705a5016": {
+    "message": "תופסי קנבס"
+  },
   "cc_attribution_f6de631f": {
     "message": "הרשאה שימוש עם קרדיט למחבר"
   },
@@ -92,6 +95,9 @@
   "creative_commons_license_725584ae": {
     "message": "זכויות במסגרת Creative Commons"
   },
+  "custom_6979cd81": {
+    "message": "ידני"
+  },
   "decorative_image_fde98579": {
     "message": "תמונת קישוט"
   },
@@ -104,8 +110,14 @@
   "discussions_index_6c36ced": {
     "message": "אינדקס דיונים"
   },
+  "done_54e3d4b6": {
+    "message": "בוצע"
+  },
   "due_multiple_dates_cc0ee3f5": {
     "message": "יעד: תאריכים מרובים"
+  },
+  "embed_image_1080badc": {
+    "message": "הטמעת תמונה"
   },
   "enter_search_terms_e397b1f0": {
     "message": "הקלדת ערכי חיפוש"
@@ -124,6 +136,9 @@
   },
   "folder_705fd2d7": {
     "message": "תיקיה"
+  },
+  "generating_preview_45b53be0": {
+    "message": "מכין תצוגה מקדימה..."
   },
   "grades_a61eba0a": {
     "message": "הערכות"
@@ -146,9 +161,6 @@
   "image_upload_form_7b74079a": {
     "message": "טופס להעלאת תמונה"
   },
-  "image_url_2aee2734": {
-    "message": "כתובת התמונה"
-  },
   "images_7ce26570": {
     "message": "תמונות"
   },
@@ -166,6 +178,9 @@
   },
   "invalid_file_type_881cc9b2": {
     "message": "סוג קובץ לא חוקי"
+  },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "קיצורי מקלדת"
   },
   "link_7262adec": {
     "message": "קישור"
@@ -194,17 +209,14 @@
   "loading_failed_b3524381": {
     "message": "טעינה נכשלה..."
   },
-  "loading_more_results_def6df65": {
-    "message": "טוען תוצאות נוספות..."
-  },
-  "media_af190855": {
-    "message": "מדיה"
-  },
   "modules_c4325335": {
     "message": "מודולים"
   },
   "no_results_940393cf": {
     "message": "אין תוצאות"
+  },
+  "open_this_keyboard_shortcuts_dialog_9658b83a": {
+    "message": "פתיחת חלון דיאלוג של מקשי קיצור"
   },
   "options_3ab0ea65": {
     "message": "אפשרויות"
@@ -227,6 +239,9 @@
   "recording_98da6bda": {
     "message": "מקליט"
   },
+  "rich_content_editor_2708ef21": {
+    "message": "עורך תוכן עשיר"
+  },
   "save_11a80ec3": {
     "message": "שמירה "
   },
@@ -241,6 +256,12 @@
   },
   "select_a_folder_to_upload_your_file_into_b82d12b": {
     "message": "בחירת תיקיה להעלאת הקובץ שלך"
+  },
+  "selected_274ce24f": {
+    "message": "נבחר"
+  },
+  "size_b30e1077": {
+    "message": "גודל"
   },
   "start_over_f7552aa9": {
     "message": "התחל/י מהתחלה"

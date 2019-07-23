@@ -16,31 +16,41 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import React from 'react'
-import { object } from 'prop-types'
-import { MediaCapture, canUseMediaCapture } from '@instructure/media-capture'
+import {Alert} from '@instructure/ui-alerts'
+import {canUseMediaCapture, MediaCapture} from '@instructure/media-capture'
+import formatMessage from '../../../../format-message'
 import {MediaCaptureStrings} from './MediaCaptureStrings'
+import {object, func} from 'prop-types'
+import React from 'react'
 
 export default class MediaRecorder extends React.Component {
-  componentWillMount() {
-    this.props.contentProps.createMediaServerSession()
+  saveFile = (file) => {
+    this.props.contentProps.saveMediaRecording(file, this.props.editor, this.props.dismiss)
   }
 
   render() {
     return (
       <div>
-        {canUseMediaCapture() && (
+        {canUseMediaCapture() ? (
           <MediaCapture
             translations={MediaCaptureStrings}
             onCompleted={this.saveFile}
           />
-        )}
+        ) :
+        (<Alert
+          variant="error"
+          margin="small"
+        >
+          {formatMessage('Error uploading video/audio recording')}
+        </Alert>)
+      }
       </div>
     )
   }
 }
 
 MediaRecorder.propTypes = {
-    editor: object.isRequired,
-    contentProps: object.isRequired
+  contentProps: object.isRequired,
+  dismiss: func.isRequired,
+  editor: object.isRequired
 }

@@ -33,7 +33,7 @@ import {
   updateLatePolicy
 } from '../apis/GradebookSettingsModalApi'
 import PostPolicies from '../PostPolicies'
-import {setCoursePostPolicy} from '../PostPolicies/PostPolicyApi'
+import {getAssignmentPostPolicies, setCoursePostPolicy} from '../PostPolicies/PostPolicyApi'
 import LatePoliciesTabPanel from './LatePoliciesTabPanel'
 import GradePostingPolicyTabPanel from './GradePostingPolicyTabPanel'
 import {showFlashAlert} from '../../../shared/FlashAlert'
@@ -65,7 +65,7 @@ function onSaveSettingsFailure() {
   return Promise.reject(new Error(message))
 }
 
-function onSavePostPolicyFailure() {
+function onSavePostPolicyFailure(_error) {
   const message = I18n.t('An error occurred while saving the course post policy')
   showFlashAlert({message, type: 'error'})
   return Promise.reject(new Error(message))
@@ -162,11 +162,13 @@ export default class GradebookSettingsModal extends React.Component {
       courseId: this.props.courseId,
       postManually: this.state.coursePostPolicy.postManually
     })
+      .then(_response => getAssignmentPostPolicies({courseId: this.props.courseId}))
       .then(response => {
-        if (response !== null) {
-          const {postManually} = response
-          this.props.postPolicies.setCoursePostPolicy({postManually})
-        }
+        const {postManually} = this.state.coursePostPolicy
+        this.props.postPolicies.setCoursePostPolicy({postManually})
+
+        const {assignmentPostPoliciesById} = response
+        this.props.postPolicies.setAssignmentPostPolicies({assignmentPostPoliciesById})
       })
       .catch(onSavePostPolicyFailure)
 
@@ -225,7 +227,13 @@ export default class GradebookSettingsModal extends React.Component {
   }
 
   close = () => {
-    this.setState({isOpen: false}, () => {
+    const state = {isOpen: false}
+
+    if (this.props.postPolicies) {
+      state.coursePostPolicy = this.props.postPolicies.coursePostPolicy
+    }
+
+    this.setState(state, () => {
       const latePolicy = {changes: {}, data: undefined, validationErrors: {}}
       // need to reset the latePolicy state _after_ the modal is closed, otherwise
       // the spinner will be visible for a brief moment before the modal closes.

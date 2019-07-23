@@ -23,6 +23,9 @@
   "cancel_image_upload_2c771950": {
     "message": "Ακύρωση μεταφόρτωσης εικόνας"
   },
+  "canvas_plugins_705a5016": {
+    "message": "Προσθήκες του Canvas"
+  },
   "cc_attribution_f6de631f": {
     "message": "Αναφορά Δημιουργού CC"
   },
@@ -95,8 +98,14 @@
   "discussions_index_6c36ced": {
     "message": "Ευρετήριο Συζητήσεων"
   },
+  "done_54e3d4b6": {
+    "message": "Ολοκληρώθηκε"
+  },
   "due_multiple_dates_cc0ee3f5": {
     "message": "<mrk mid=\"4290\" mtype=\"seg\">Καταληκτική Ημερ/νία:</mrk> <mrk mid=\"4291\" mtype=\"seg\">Πολλαπλές Ημερομηνίες</mrk>"
+  },
+  "embed_image_1080badc": {
+    "message": "Ενσωμάτωση εικόνας"
   },
   "enter_search_terms_e397b1f0": {
     "message": "εισαγωγή όρων αναζήτησης"
@@ -112,6 +121,9 @@
   },
   "folder_705fd2d7": {
     "message": "Φάκελος"
+  },
+  "generating_preview_45b53be0": {
+    "message": "Δημιουργία προεπισκόπησης..."
   },
   "grades_a61eba0a": {
     "message": "Βαθμοί"
@@ -131,9 +143,6 @@
   "image_upload_form_7b74079a": {
     "message": "Φόρμα Μεταφόρτωσης Εικόνας"
   },
-  "image_url_2aee2734": {
-    "message": "URL Εικόνας"
-  },
   "images_7ce26570": {
     "message": "Εικόνες"
   },
@@ -151,6 +160,9 @@
   },
   "invalid_file_type_881cc9b2": {
     "message": "Μη έγκυρος τύπος αρχείου"
+  },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "Συντομεύσεις πληκτρολογίου"
   },
   "link_7262adec": {
     "message": "Σύνδεσμος"
@@ -179,12 +191,6 @@
   "loading_failed_b3524381": {
     "message": "Η Φόρτωση Απέτυχε"
   },
-  "loading_more_results_def6df65": {
-    "message": "Γίνεται φόρτωση περισσοτέρων αποτελεσμάτων..."
-  },
-  "media_af190855": {
-    "message": "Δεδομένα"
-  },
   "modules_c4325335": {
     "message": "Ενότητες"
   },
@@ -212,6 +218,9 @@
   "recording_98da6bda": {
     "message": "Εγγράφεται"
   },
+  "rich_content_editor_2708ef21": {
+    "message": "Επεξεργαστής Πλούσιου Περιεχομένου-rich content"
+  },
   "save_11a80ec3": {
     "message": "Αποθήκευση"
   },
@@ -223,6 +232,9 @@
   },
   "select_a_folder_to_upload_your_file_into_b82d12b": {
     "message": "Επιλέξτε το φάκελο στον οποίο θέλετε να φορτώσετε το αρχείο "
+  },
+  "size_b30e1077": {
+    "message": "Μέγεθος"
   },
   "start_over_f7552aa9": {
     "message": "Ξεκινήστε Ξανά"

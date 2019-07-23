@@ -28,16 +28,27 @@
  * I didn't find any of those elements in the RCE, so I didn't want to guess what it
  * should look like.
  */
- /* stylelint-disable property-blacklist, declaration-property-value-blacklist */
 .root {
   background-color: var(--canvasBackgroundColor)
 }
+
 :global {
+  /* not part of the skin, but necessary to properly size the RCE's textarea */
+  .rce-wrapper textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: auto;
+  }
+
   .tox,
   .tox *:not(svg) {
     color: inherit;
     font-family: inherit;
   }
+
+  /* fix RTL. tinyMCE tries to do this in its default theme but it's base style is too specific so when it does it, it isn't specific enough to override the base */
+  [dir="rtl"] .tox :not(svg) { direction: rtl }
+
   .tox-tinymce-aux {
     font-family: var(--canvasFontFamily);
   }
@@ -118,7 +129,6 @@
   }
   .tox .tox-button--naked:active:not(:disabled) {
     background-color: inherit;
-    border-color: inherit;
     color: inherit;
   }
   .tox .tox-button--naked.tox-button--icon {
@@ -132,14 +142,15 @@
     fill: rgba(45, 59, 69, 0.3);
   }
   .tox .tox-checkbox__icons .tox-checkbox-icon__indeterminate svg {
-    fill: #3498db;
+    fill: var(--canvasTextColor);
   }
   .tox .tox-checkbox__icons .tox-checkbox-icon__checked svg {
-    fill: #3498db;
+    fill: var(--canvasTextColor);
   }
   .tox input.tox-checkbox__input:focus + .tox-checkbox__icons {
-    box-shadow: inset 0 0 0 1px #3498db;
+    box-shadow: var(--canvasFocusBoxShadow);
   }
+
   .tox .tox-collection--list .tox-collection__group {
     border-color: var(--canvasBorderColor);
   }
@@ -198,6 +209,9 @@
   .tox .tox-rgb-form input.tox-invalid {
     /* Need !important to override Chrome's focus styling unfortunately */
     border-color: var(--canvasErrorColor) !important;
+  }
+  .tox .tox-rgb-form {
+    padding: 2px; /* make room for the canvas focus ring on contained input elements */
   }
   .tox .tox-swatches__picker-btn:hover {
     background: #e0e2e3;
@@ -270,10 +284,13 @@
   }
   .tox .tox-dialog__body-nav-item {
     color: rgba(45, 59, 69, 0.6);
+    &:focus {
+      box-shadow: var(--canvasFocusBoxShadow);
+    }
   }
   .tox .tox-dialog__body-nav-item--active {
-    border-bottom-color: #3498db;
-    color: #3498db;
+    border-bottom-color: var(--canvasBrandColor);
+    color: var(--canvasBrandColor);
   }
   .tox .tox-dialog__footer {
     background-color: var(--canvasModalFooterBackground);
@@ -321,7 +338,7 @@
     border-color: rgba(45, 59, 69, 0.2);
   }
   .tox .tox-color-input span:focus {
-    border-color: #3498db;
+    border-color: var(--canvasBrandColor);
   }
   .tox .tox-label,
   .tox .tox-toolbar-label {
@@ -447,7 +464,7 @@
     border-color: var(--canvasBorderColor);
   }
   .tox .tox-slider__handle {
-    background-color: #3498db;
+    background-color: var(--canvasBrandColor);
   }
   .tox .tox-spinner > div {
     background-color: rgba(45, 59, 69, 0.6);
@@ -577,7 +594,8 @@
     background-image: none;
   }
   .tox .tox-toolbar .tox-toolbar__group,
-  .tox .tox-toolbar-overlord .tox-toolbar__group {
+  .tox .tox-toolbar-overlord .tox-toolbar__group,
+  .tox:not([dir=rtl]) .tox-toolbar__group:not(:last-of-type) {
     border-style: none;
   }
   .tox-toolbar .tox-toolbar__group::after,
@@ -585,14 +603,14 @@
     content: "";
     display: inline-block;
     box-sizing: border-box;
-    border-right: 1px solid var(--canvasBorderColor);
+    border-inline-end: 1px solid var(--canvasBorderColor);
     width: 8px;
     height: 24px;
   }
   .tox-toolbar .tox-toolbar__group:last-child::after,
   .tox-toolbar-overlord .tox-toolbar__group:last-child::after {
-    border-right-width: 0;
-    padding-left: 0;
+    border-inline-end-width: 0;
+    padding-inline-start: 0;
   }
 
   .tox-pop__dialog .tox-toolbar__group::after {
@@ -601,7 +619,7 @@
 
   .tox .tox-tbtn--bespoke .tox-tbtn__select-label {
     width: auto;
-    padding-right: 0;
+    padding-inline-end: 0;
   }
 
   /***************** new rules added to the skin *****************/
@@ -614,12 +632,12 @@
     border: 1px var(--canvasButtonBorderStyle) var(--canvasButtonBorderColor);
   }
   .tox .tox-split-button .tox-tbtn {
-    border-right-width: 0;
-    margin-right: 0;
+    border-inline-end-width: 0;
+    margin-inline-end: 0;
   }
   .tox .tox-split-button .tox-tbtn.tox-split-button__chevron {
-    border-left-width: 0;
-    margin-left: 0;
+    border-inline-start-width: 0;
+    margin-inline-start: 0;
   }
 
   .tox .tox-edit-area.active,
@@ -629,15 +647,16 @@
 
   .tox .tox-split-button .tox-tbtn {
     border-width: 0;
-    margin-right: 0;
+    margin-inline-end: 0;
   }
   .tox .tox-split-button .tox-tbtn.tox-split-button__chevron {
     border-width: 0;
-    margin-left: -6px;
+    margin-inline-start: -6px;
+    background-color: var(--canvasBackgroundColor);
   }
 
   .tox .tox-split-button:hover .tox-split-button__chevron {
-    background: var(--tinySplitButtonChevronHoverBackground);
+    background-color: var(--tinySplitButtonChevronHoverBackground);
   }
 
   .tox .tox-tbtn:focus.tox-split-button__chevron {
@@ -649,7 +668,7 @@
   }
 
   .tox-tbtn.tox-tbtn--select .tox-icon.tox-tbtn__icon-wrap {
-    margin-right: 4px;
+    margin-inline-end: 4px;
   }
 
   /* MAKE INSTUI ICONS THE SAME SIZE AS THE DEFAULT TINYMCE ONES */

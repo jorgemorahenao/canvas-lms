@@ -18,7 +18,7 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import {fireEvent, wait} from 'react-testing-library'
+import {fireEvent, wait} from '@testing-library/react'
 
 import GradebookSettingsModal from 'jsx/gradezilla/default_gradebook/components/GradebookSettingsModal'
 import * as GradebookSettingsModalApi from 'jsx/gradezilla/default_gradebook/apis/GradebookSettingsModalApi'
@@ -45,6 +45,7 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
   let createLatePolicyPromise
   let updateLatePolicyPromise
   let setCoursePostPolicyPromise
+  let getAssignmentPostPoliciesPromise
   let updateCourseSettingsPromise
 
   suiteHooks.beforeEach(() => {
@@ -120,11 +121,24 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     setCoursePostPolicyPromise = {}
     setCoursePostPolicyPromise.promise = new Promise((resolve, reject) => {
       setCoursePostPolicyPromise.resolve = () => {
-        resolve(postPolicy)
+        const {postManually} = postPolicy
+        resolve({postManually})
       }
       setCoursePostPolicyPromise.reject = reject
     })
     sandbox.stub(PostPolicyApi, 'setCoursePostPolicy').returns(setCoursePostPolicyPromise.promise)
+
+    getAssignmentPostPoliciesPromise = {}
+    getAssignmentPostPoliciesPromise.promise = new Promise((resolve, reject) => {
+      getAssignmentPostPoliciesPromise.resolve = () => {
+        const assignmentPostPoliciesById = {2345: {postManually: true}}
+        resolve({assignmentPostPoliciesById})
+      }
+      getAssignmentPostPoliciesPromise.reject = reject
+    })
+    sandbox
+      .stub(PostPolicyApi, 'getAssignmentPostPolicies')
+      .returns(getAssignmentPostPoliciesPromise.promise)
 
     updateCourseSettingsPromise = {}
     updateCourseSettingsPromise.promise = new Promise((resolve, reject) => {
@@ -260,6 +274,16 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       component.close()
       await waitForModalClosed()
       notOk(getModalElement())
+    })
+
+    test('resets the selected post policy to the actual value', async () => {
+      props.postPolicies.setCoursePostPolicy({postManually: true})
+      await mountOpenLoadAndSelectTab('Grade Posting Policy')
+      getAutomaticallyPostGradesOption().click()
+      component.close()
+      await waitForModalClosed()
+      await mountOpenLoadAndSelectTab('Grade Posting Policy')
+      strictEqual(getManuallyPostGradesOption().checked, true)
     })
   })
 
@@ -566,6 +590,8 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
   QUnit.module('when updating the course post policy', hooks => {
     hooks.beforeEach(async () => {
       sandbox.spy(FlashAlert, 'showFlashAlert')
+      sandbox.spy(props.postPolicies, 'setCoursePostPolicy')
+      sandbox.spy(props.postPolicies, 'setAssignmentPostPolicies')
 
       await mountOpenLoadAndSelectTab('Grade Posting Policy')
       getManuallyPostGradesOption().click()
@@ -573,6 +599,7 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     hooks.afterEach(() => {
+      props.postPolicies.setCoursePostPolicy.restore()
       FlashAlert.destroyContainer()
     })
 
@@ -581,27 +608,68 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       setCoursePostPolicyPromise.resolve()
     })
 
-    QUnit.module('when the request succeeds', contextHooks => {
-      contextHooks.beforeEach(async () => {
+    QUnit.module('when the call to setCoursePostPolicy succeeds', contextHooks => {
+      contextHooks.beforeEach(() => {
         setCoursePostPolicyPromise.resolve()
+      })
+
+      test('calls getAssignmentPostPolicies', async () => {
+        getAssignmentPostPoliciesPromise.resolve()
         await waitForModalClosed()
+
+        strictEqual(PostPolicyApi.getAssignmentPostPolicies.callCount, 1)
       })
 
-      test('displays a flash alert', () => {
-        strictEqual(FlashAlert.showFlashAlert.callCount, 1)
+      QUnit.module('when getAssignmentPostPolicies succeeds', assignmentSuccessHooks => {
+        assignmentSuccessHooks.beforeEach(async () => {
+          getAssignmentPostPoliciesPromise.resolve()
+          await waitForModalClosed()
+        })
+
+        test('displays a flash alert', async () => {
+          strictEqual(FlashAlert.showFlashAlert.callCount, 1)
+        })
+
+        test('uses the "success" type for the flash alert', async () => {
+          const [{type}] = FlashAlert.showFlashAlert.lastCall.args
+          equal(type, 'success')
+        })
+
+        test('calls setCoursePostPolicy on the associated PostPolicies object', () => {
+          strictEqual(props.postPolicies.setCoursePostPolicy.callCount, 1)
+        })
+
+        test('passes the new postManually value to setCoursePostPolicy', () => {
+          const {postManually} = props.postPolicies.setCoursePostPolicy.firstCall.args[0]
+          strictEqual(postManually, true)
+        })
+
+        test('calls setAssignmentPostPolicies on the associated PostPolicies object', () => {
+          strictEqual(props.postPolicies.setAssignmentPostPolicies.callCount, 1)
+        })
+
+        test('passes the received assignment IDs and post policies to setAssignmentPostPolicies', () => {
+          const {
+            assignmentPostPoliciesById
+          } = props.postPolicies.setAssignmentPostPolicies.firstCall.args[0]
+          deepEqual(assignmentPostPoliciesById, {2345: {postManually: true}})
+        })
+
+        test('closes the modal', () => {
+          notOk(getModalElement())
+        })
       })
 
-      test('uses the "success" type for the flash alert', () => {
-        const [{type}] = FlashAlert.showFlashAlert.lastCall.args
-        equal(type, 'success')
-      })
+      QUnit.module('when getAssignmentPostPolicies fails', assignmentFailureHooks => {
+        assignmentFailureHooks.beforeEach(async () => {
+          getAssignmentPostPoliciesPromise.reject()
+          await wait(() => FlashAlert.showFlashAlert.callCount > 0)
+        })
 
-      test('updates the Gradebook Post Policies', () => {
-        deepEqual(props.postPolicies.coursePostPolicy, postPolicy)
-      })
-
-      test('closes the modal', () => {
-        notOk(getModalElement())
+        test('shows an "error" flash alert', () => {
+          const [{type}] = FlashAlert.showFlashAlert.lastCall.args
+          equal(type, 'error')
+        })
       })
     })
 

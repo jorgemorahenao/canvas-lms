@@ -23,6 +23,9 @@
   "cancel_image_upload_2c771950": {
     "message": "Cancel image upload"
   },
+  "canvas_plugins_705a5016": {
+    "message": "Canvas  միացվող մոդուլներ"
+  },
   "cc_attribution_f6de631f": {
     "message": "CC-ին պատկանելություն "
   },
@@ -95,8 +98,14 @@
   "discussions_index_6c36ced": {
     "message": "Քննարկումների ցուցիչ"
   },
+  "done_54e3d4b6": {
+    "message": "Պատրաստ է"
+  },
   "due_multiple_dates_cc0ee3f5": {
     "message": "Վերջնաժամկետ՝ մի քանի ամսաթիվ"
+  },
+  "embed_image_1080badc": {
+    "message": "Տեղադրել պատկերը"
   },
   "enter_search_terms_e397b1f0": {
     "message": "մուտքագրել որոնման պայմանները"
@@ -112,6 +121,9 @@
   },
   "folder_705fd2d7": {
     "message": "Թղթապանակ"
+  },
+  "generating_preview_45b53be0": {
+    "message": "Կարծիքը գեներացվում է ..."
   },
   "grades_a61eba0a": {
     "message": "Գնահատականներ"
@@ -131,9 +143,6 @@
   "image_upload_form_7b74079a": {
     "message": "Image Upload Form"
   },
-  "image_url_2aee2734": {
-    "message": "Պատկերի URL-հասցեն"
-  },
   "images_7ce26570": {
     "message": "Պատկերներ"
   },
@@ -151,6 +160,9 @@
   },
   "invalid_file_type_881cc9b2": {
     "message": "Ֆայլի անընդունելի տեսակ"
+  },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "Արագ հասանելիության ստեղներ"
   },
   "link_7262adec": {
     "message": "Հղում"
@@ -179,12 +191,6 @@
   "loading_failed_b3524381": {
     "message": "Loading failed..."
   },
-  "loading_more_results_def6df65": {
-    "message": "Բեռնում է ավելի շատ արդյունքներ..."
-  },
-  "media_af190855": {
-    "message": "Մուլտիմեդիա"
-  },
   "modules_c4325335": {
     "message": "Մոդուլներ"
   },
@@ -212,6 +218,9 @@
   "recording_98da6bda": {
     "message": "Ձայնագրում"
   },
+  "rich_content_editor_2708ef21": {
+    "message": "Ֆորմատավորված տեքստի խմբագիր"
+  },
   "save_11a80ec3": {
     "message": "Պահպանել"
   },
@@ -223,6 +232,9 @@
   },
   "select_a_folder_to_upload_your_file_into_b82d12b": {
     "message": "Select a folder to upload your file into"
+  },
+  "size_b30e1077": {
+    "message": "Չափ"
   },
   "start_over_f7552aa9": {
     "message": "Սկսել նորից"

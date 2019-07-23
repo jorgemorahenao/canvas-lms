@@ -46,6 +46,7 @@ class ContextExternalTool < ActiveRecord::Base
   validate :check_for_xml_error
 
   scope :disabled, -> { where(workflow_state: DISABLED_STATE) }
+  scope :quiz_lti, -> { where(tool_id: QUIZ_LTI) }
 
   CUSTOM_EXTENSION_KEYS = {
     :file_menu => [:accept_media_types].freeze,
@@ -53,6 +54,7 @@ class ContextExternalTool < ActiveRecord::Base
   }.freeze
 
   DISABLED_STATE = 'disabled'.freeze
+  QUIZ_LTI = 'Quizzes 2'.freeze
 
   workflow do
     state :anonymous
@@ -137,6 +139,7 @@ class ContextExternalTool < ActiveRecord::Base
       :icon_url,
       :message_type,
       :prefer_sis_email,
+      :required_permissions,
       :selection_height,
       :selection_width,
       :text,
@@ -560,11 +563,15 @@ class ContextExternalTool < ActiveRecord::Base
       res.normalize!
       return true if res.to_s == standard_url
     end
-    if domain.present?
-      host = Addressable::URI.parse(url).normalize.host rescue nil
-      !!(host && ('.' + host).match(/\.#{domain}\z/))
-    end
   end
+
+  def matches_tool_domain?(url)
+    return false if domain.blank?
+    url = ContextExternalTool.standardize_url(url)
+    host = Addressable::URI.parse(url).normalize.host rescue nil
+    d = domain.gsub(/http[s]?\:\/\//, '')
+    !!(host && ('.' + host).match(/\.#{d}\z/))
+end
 
   def matches_domain?(url)
     url = ContextExternalTool.standardize_url(url)
@@ -676,7 +683,7 @@ class ContextExternalTool < ActiveRecord::Base
     res = sorted_external_tools.detect{ |tool| tool.url && tool.matches_url?(url, false) && tool.id != exclude_tool_id }
     return res if res
 
-    res = sorted_external_tools.detect{ |tool| tool.domain && tool.matches_url?(url) && tool.id != exclude_tool_id }
+    res = sorted_external_tools.detect{ |tool| tool.domain && tool.matches_tool_domain?(url) && tool.id != exclude_tool_id }
     return res if res
 
     nil
@@ -796,6 +803,21 @@ class ContextExternalTool < ActiveRecord::Base
     end
   end
 
+  def visible_with_permission_check?(launch_type, user, context, session=nil)
+    return false unless self.class.visible?(self.extension_setting(launch_type, 'visibility'), user, context, session)
+    if (required_permissions_str = self.extension_setting(launch_type, 'required_permissions'))
+      # if configured with a comma-separated string of permissions, will only show the link
+      # if all permissions are granted
+      required_permissions_str.split(",").map(&:to_sym).all?{|p| context&.grants_right?(user, session, p)}
+    else
+      true
+    end
+  end
+
+  def quiz_lti?
+    tool_id == QUIZ_LTI
+  end
+
   private
 
   def self.context_id_for(asset, shard)
@@ -832,12 +854,14 @@ class ContextExternalTool < ActiveRecord::Base
   end
 
   def self.global_navigation_tools(root_account, visibility)
-    tools = root_account.context_external_tools.active.having_setting(:global_navigation).to_a
-    if visibility == 'members'
-      # reject the admin only tools
-      tools.reject!{|tool| tool.global_navigation[:visibility] == 'admins'}
+    RequestCache.cache('global_navigation_tools', root_account, visibility) do
+      tools = root_account.context_external_tools.active.having_setting(:global_navigation).to_a
+      if visibility == 'members'
+        # reject the admin only tools
+        tools.reject!{|tool| tool.global_navigation[:visibility] == 'admins'}
+      end
+      tools
     end
-    tools
   end
 
   def self.global_navigation_menu_cache_key(root_account, visibility)

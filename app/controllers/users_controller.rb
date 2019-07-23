@@ -403,6 +403,11 @@ class UsersController < ApplicationController
   #   administrative users will search on SIS ID, login ID, name, or email
   #   address; non-administrative queries will only be compared against name.
   #
+  # @argument enrollment_type [String]
+  #   When set, only return users enrolled with the specified course-level base role.
+  #   This can be a base role type of 'StudentEnrollment', 'TeacherEnrollment',
+  #   'TaEnrollment', 'ObserverEnrollment', or 'DesignerEnrollment'.
+  #
   # @argument sort [String, "username"|"email"|"sis_id"|"last_login"]
   #   The column to sort results by.
   #
@@ -444,16 +449,20 @@ class UsersController < ApplicationController
           page_opts = {}
           if search_term
             users = UserSearch.for_user_in_context(search_term, @context, @current_user, session,
-              {order: params[:order], sort: params[:sort], enrollment_role_id: params[:role_filter_id]})
+              {
+                order: params[:order], sort: params[:sort], enrollment_role_id: params[:role_filter_id],
+                enrollment_type: params[:enrollment_type]
+              })
             page_opts[:total_entries] = nil # doesn't calculate a total count
           else
             users = UserSearch.scope_for(@context, @current_user,
-              {order: params[:order], sort: params[:sort], enrollment_role_id: params[:role_filter_id]})
+              {order: params[:order], sort: params[:sort], enrollment_role_id: params[:role_filter_id],
+                enrollment_type: params[:enrollment_type]})
           end
 
-          includes = (params[:include] || []) & %w{avatar_url email last_login time_zone}
+          includes = (params[:include] || []) & %w{avatar_url email last_login time_zone uuid}
           includes << 'last_login' if params[:sort] == 'last_login' && !includes.include?('last_login')
-          users = users.with_last_login if includes.include?('last_login')
+          users = users.with_last_login if includes.include?('last_login') && !search_term
           users = Api.paginate(users, self, api_v1_account_users_url, page_opts)
           user_json_preloads(users, includes.include?('email'))
           return render :json => users.map { |u| user_json(u, @current_user, session, includes)}
@@ -943,7 +952,7 @@ class UsersController < ApplicationController
   #   }
   def todo_item_count
     return render_unauthorized_action unless @current_user
-    grading = @current_user.assignments_needing_grading_count
+    grading = @current_user.submissions_needing_grading_count
     submitting = @current_user.assignments_needing_submitting(include_ungraded: true, scope_only: true, limit: nil).size
     if Array(params[:include]).include? 'ungraded_quizzes'
       submitting += @current_user.ungraded_quizzes(:needing_submitting => true, scope_only: true, limit: nil).size
@@ -1221,7 +1230,7 @@ class UsersController < ApplicationController
       if authorized_action(@user, @current_user, :read_full_profile)
         add_crumb(t('crumbs.profile', "%{user}'s profile", :user => @user.short_name), @user == @current_user ? user_profile_path(@current_user) : user_path(@user) )
 
-        @group_memberships = @user.current_group_memberships
+        @group_memberships = @user.cached_current_group_memberships_by_date
 
         # course_section and enrollment term will only be used if the enrollment dates haven't been cached yet;
         # maybe should just look at the first enrollment and check if it's cached to decide if we should include
@@ -1267,6 +1276,11 @@ class UsersController < ApplicationController
   #    "can_update_avatar": false // Whether the user can update their avatar.
   #   }
   #
+  # @argument include[] [String, "uuid"]
+  #   Array of additional information to include on the user record.
+  #   "locale", "avatar_url", "permissions", "email", and "effective_locale"
+  #   will always be returned
+  #
   # @example_request
   #   curl https://<canvas>/api/v1/users/self \
   #       -X GET \
@@ -1276,7 +1290,10 @@ class UsersController < ApplicationController
   def api_show
     @user = api_find(User, params[:id])
     if @user.grants_right?(@current_user, session, :api_show_user)
-      render :json => user_json(@user, @current_user, session, %w{locale avatar_url permissions email effective_locale}, @domain_root_account)
+      includes = %w{locale avatar_url permissions email effective_locale}
+      includes << 'uuid' if Array.wrap(params[:include]).include?('uuid')
+
+      render :json => user_json(@user, @current_user, session, includes, @domain_root_account)
     else
       render_unauthorized_action
     end

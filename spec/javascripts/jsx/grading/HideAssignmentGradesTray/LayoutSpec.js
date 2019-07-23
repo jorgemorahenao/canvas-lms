@@ -23,77 +23,55 @@ import Layout from 'jsx/grading/HideAssignmentGradesTray/Layout'
 
 QUnit.module('HideAssignmentGradesTray Layout', suiteHooks => {
   let $container
-  let context
 
-  function getHeading() {
-    return [...$container.querySelectorAll('h3')].find($heading =>
-      $heading.textContent.includes('Hide Grades')
+  function getHeader() {
+    return [...$container.querySelectorAll('h3')].find($header =>
+      $header.textContent.includes('Hide Grades')
     )
   }
 
   function getAnonymousText() {
-    const hideText = 'You can only hide grades for everyone when the assignment is anonymous.'
-    return [...$container.querySelectorAll('p')].find($p => $p.textContent === hideText)
+    const hideText =
+      'Grades can only be hidden for everyone when the assignment is anonymous. Anonymity will be enabled.'
+    return [...$container.querySelectorAll('div')].find($el => $el.textContent === hideText)
   }
 
-  function getDescription() {
-    const description =
-      'While the grades for this assignment are hidden, students will not receive new notifications about or be able to see:'
-    return [...$container.querySelectorAll('p')].find($p => $p.textContent === description)
+  function getRefreshText() {
+    const refreshText = 'Hiding grades will refresh your browser. This may take a moment.'
+    return [...$container.querySelectorAll('div')].find($el => $el.textContent === refreshText)
   }
 
-  function getCloseButton() {
-    return [...$container.querySelectorAll('button')].find(
-      $button => $button.textContent === 'Close'
-    )
+  function getUnreleasedGradesAlertText() {
+    const hideText =
+      'Hiding grades is not allowed because grades have not been released for this assignment.'
+    return [...$container.querySelectorAll('div')].find($p => $p.textContent === hideText)
   }
 
-  function getHideButton() {
-    return [...$container.querySelectorAll('button')].find(
-      $button => $button.textContent === 'Hide'
-    )
+  function layoutProps({assignment, ...props} = {}) {
+    return {
+      assignment: {
+        anonymousGrading: false,
+        gradesPublished: true,
+        ...assignment
+      },
+      dismiss() {},
+      hideBySections: true,
+      hideBySectionsChanged() {},
+      hidingGrades: false,
+      onHideClick() {},
+      sections: [{id: '2001', name: 'Freshmen'}, {id: '2002', name: 'Sophomores'}],
+      sectionSelectionChanged() {},
+      selectedSectionIds: [],
+      ...props
+    }
   }
 
-  function getSpinner() {
-    return [...$container.querySelectorAll('svg')].find(
-      $spinner => $spinner.textContent === 'Hiding grades'
-    )
-  }
-
-  function getLabel(text) {
-    return [...$container.querySelectorAll('label')].find($label => $label.textContent === text)
-  }
-
-  function getInputByLabel(label) {
-    const $label = getLabel(label)
-    if ($label === undefined) return undefined
-    return document.getElementById($label.htmlFor)
-  }
-
-  function getSpecificSectionToggleInput() {
-    return getInputByLabel('Specific Sections')
-  }
-
-  function mountComponent() {
-    ReactDOM.render(<Layout {...context} />, $container)
+  function mountComponent(props = {}) {
+    ReactDOM.render(<Layout {...layoutProps(props)} />, $container)
   }
 
   suiteHooks.beforeEach(() => {
     $container = document.body.appendChild(document.createElement('div'))
-    context = {
-      assignment: {
-        anonymousGrading: false,
-        gradesPublished: true
-      },
-      dismiss: () => {},
-      hideBySections: true,
-      hideBySectionsChanged: () => {},
-      hidingGrades: false,
-      onHideClick: () => {},
-      sections: [{id: '2001', name: 'Freshmen'}, {id: '2002', name: 'Sophomores'}],
-      sectionSelectionChanged: () => {},
-      selectedSectionIds: []
-    }
   })
 
   suiteHooks.afterEach(() => {
@@ -101,167 +79,89 @@ QUnit.module('HideAssignmentGradesTray Layout', suiteHooks => {
     $container.remove()
   })
 
-  test('clicking "Close" button calls the dismiss prop', () => {
-    sinon.spy(context, 'dismiss')
+  test('header is present', () => {
     mountComponent()
-    getCloseButton().click()
-    const {
-      dismiss: {callCount}
-    } = context
-    strictEqual(callCount, 1)
+    ok(getHeader())
   })
 
-  test('clicking "Hide" button calls the onHideClick prop', () => {
-    sinon.spy(context, 'onHideClick')
-    mountComponent()
-    getHideButton().click()
-    const {
-      onHideClick: {callCount}
-    } = context
-    strictEqual(callCount, 1)
-  })
-
-  QUnit.module('default behavior', mountComponentHooks => {
-    mountComponentHooks.beforeEach(() => mountComponent())
-
-    test('heading is present', () => {
-      ok(getHeading())
+  QUnit.module('"Unreleased grades" message behavior', () => {
+    test('when "gradesPublished" is false, unreleased grades message is present', () => {
+      mountComponent({assignment: {gradesPublished: false}})
+      ok(getUnreleasedGradesAlertText())
     })
 
-    test('spinner is hidden', () => {
-      notOk(getSpinner())
-    })
-
-    test('section toggle is present', () => {
-      ok(getSpecificSectionToggleInput())
-    })
-
-    test('description is present', () => {
-      ok(getDescription())
-    })
-
-    test('"hide" button is present', () => {
-      ok(getHideButton())
-    })
-
-    test('close button is present', () => {
-      ok(getCloseButton())
-    })
-
-    test('anonymous descriptive text is hidden', () => {
-      mountComponent()
-      notOk(getAnonymousText())
+    test('when "gradesPublished" is true, unreleased grades message is hidden', () => {
+      mountComponent({assignment: {gradesPublished: true}})
+      notOk(getUnreleasedGradesAlertText())
     })
   })
 
-  QUnit.module('given "hidingGrades" prop is true', hidingGradesHooks => {
-    hidingGradesHooks.beforeEach(() => {
-      context.hidingGrades = true
-      mountComponent()
-    })
+  QUnit.module('"will refresh your browser" text behavior', contextHooks => {
+    let assignment
+    let containerName
 
-    test('heading is present', () => {
-      ok(getHeading())
-    })
-
-    test('spinner is present', () => {
-      ok(getSpinner())
-    })
-
-    test('section toggle hidden', () => {
-      notOk(getSpecificSectionToggleInput())
-    })
-
-    test('"hide" button is hidden', () => {
-      notOk(getHideButton())
-    })
-
-    test('close button is hidden', () => {
-      notOk(getCloseButton())
-    })
-
-    test('anonymous descriptive text is hidden', () => {
-      notOk(getAnonymousText())
-    })
-  })
-
-  QUnit.module('given grades are not published', gradesPublishedHooks => {
-    gradesPublishedHooks.beforeEach(() => {
-      context.assignment.gradesPublished = false
-      mountComponent()
-    })
-
-    test('"Specific Section" toggle is disabled', () => {
-      strictEqual(getSpecificSectionToggleInput().disabled, true)
-    })
-
-    test('"Close" button is disabled', () => {
-      strictEqual(getCloseButton().disabled, true)
-    })
-
-    test('"Hide" button is disabled', () => {
-      strictEqual(getHideButton().disabled, true)
-    })
-
-    test('description is present', () => {
-      ok(getDescription())
-    })
-  })
-
-  QUnit.module('when sections are absent', contextHooks => {
     contextHooks.beforeEach(() => {
-      context.sections = []
+      assignment = {anonymousGrading: true, gradesPublished: true}
+      containerName = 'SPEED_GRADER'
     })
 
-    test('section toggle is not shown', () => {
-      mountComponent()
-      notOk(getLabel('Specific Sections'))
+    test('when gradesPublished and anonymousGrading are true, and containerName is SPEED_GRADER, refresh text is present', () => {
+      mountComponent({assignment, containerName})
+      ok(getRefreshText())
     })
 
-    test('anonymous descriptive text is not shown', () => {
-      context.assignment.anonymousGrading = true
-      mountComponent()
-      notOk(getAnonymousText())
+    test('when gradesPublished is false, refresh text is not present', () => {
+      assignment.gradesPublished = false
+      mountComponent({assignment, containerName})
+      notOk(getRefreshText())
     })
 
-    test('sections are not shown', () => {
-      context.hideBySections = false
-      mountComponent()
-      notOk(getLabel('Sophomores'))
+    test('when anonymousGrading is false, refresh text is not present', () => {
+      assignment.anonymousGrading = false
+      mountComponent({assignment, containerName})
+      notOk(getRefreshText())
+    })
+
+    test('when containerName is not SPEED_GRADER, refresh text is not present', () => {
+      containerName = 'NOT_SPEED_GRADER'
+      mountComponent({assignment, containerName})
+      notOk(getRefreshText())
     })
   })
 
-  QUnit.module('Anonymous assignments', anonymousAssignmentsHooks => {
-    anonymousAssignmentsHooks.beforeEach(() => {
-      context.assignment.anonymousGrading = true
-      mountComponent()
+  QUnit.module('"for everyone when assignment is anonymous" text behavior', contextHooks => {
+    let assignment
+    let sections
+
+    contextHooks.beforeEach(() => {
+      assignment = {
+        gradesPublished: true,
+        anonymousGrading: true
+      }
+      sections = [{id: '2001', name: 'Freshmen'}]
     })
 
-    test('anonymous descriptive text is present', () => {
+    test('when "gradesPublished" and "anonymousGrading" are true and at least one section, anonymous descriptive text is present', () => {
+      mountComponent({assignment, sections})
       ok(getAnonymousText())
     })
 
-    test('"Specific Sections" is disabled', () => {
-      strictEqual(getSpecificSectionToggleInput().disabled, true)
-    })
-  })
-
-  QUnit.module('SpecificSections', () => {
-    test('enabling "Specific Sections" calls the hideBySectionsChanged prop', () => {
-      const spy = sinon.spy(context, 'hideBySectionsChanged')
-      mountComponent()
-      getSpecificSectionToggleInput().click()
-      const {callCount} = spy
-      strictEqual(callCount, 1)
+    test('when "gradesPublished" is false, anonymous descriptive text is hidden', () => {
+      assignment.gradesPublished = false
+      mountComponent({assignment, sections})
+      notOk(getAnonymousText())
     })
 
-    test('selecting "Graded" calls the sectionSelectionChanged prop', () => {
-      const spy = sinon.spy(context, 'sectionSelectionChanged')
-      mountComponent()
-      getSpecificSectionToggleInput().click()
-      getInputByLabel('Freshmen').click()
-      const {callCount} = spy
-      strictEqual(callCount, 1)
+    test('when "sections" are empty, anonymous descriptive text is hidden', () => {
+      sections = []
+      mountComponent({assignment, sections})
+      notOk(getAnonymousText())
+    })
+
+    test('when "anonymousGrading" is false, anonymous descriptive text is hidden', () => {
+      assignment.anonymousGrading = false
+      mountComponent({assignment, sections})
+      notOk(getAnonymousText())
     })
   })
 })

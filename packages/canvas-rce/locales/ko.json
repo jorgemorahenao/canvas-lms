@@ -20,6 +20,9 @@
   "cancel_image_upload_2c771950": {
     "message": "Cancel image upload"
   },
+  "canvas_plugins_705a5016": {
+    "message": "Canvas 플러그 인"
+  },
   "cc_attribution_f6de631f": {
     "message": "CC 유형"
   },
@@ -83,6 +86,12 @@
   "discussions_index_6c36ced": {
     "message": "토론 색인"
   },
+  "done_54e3d4b6": {
+    "message": "마침"
+  },
+  "embed_image_1080badc": {
+    "message": "이미지 포함"
+  },
   "enter_search_terms_e397b1f0": {
     "message": "검색 용어 입력"
   },
@@ -131,6 +140,9 @@
   "invalid_file_type_881cc9b2": {
     "message": "유효하지 않은 파일 유형"
   },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "키보드 단축키"
+  },
   "link_7262adec": {
     "message": "Link"
   },
@@ -157,9 +169,6 @@
   },
   "loading_failed_b3524381": {
     "message": "Loading failed..."
-  },
-  "media_af190855": {
-    "message": "미디어"
   },
   "modules_c4325335": {
     "message": "모듈"

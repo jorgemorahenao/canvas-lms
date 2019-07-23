@@ -100,7 +100,8 @@ describe UsersController do
           "iss",
           "login_hint",
           "target_link_uri",
-          "lti_message_hint"
+          "lti_message_hint",
+          "canvas_region"
         ]
       end
 
@@ -939,9 +940,6 @@ describe UsersController do
         before(:each) do
           course.root_account.role_overrides.create!(
             permission: 'view_all_grades', role: teacher_role, enabled: false
-          )
-          RoleOverride.create!(
-            permission: 'manage_grades', role: teacher_role, enabled: true
           )
         end
 

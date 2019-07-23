@@ -17,7 +17,7 @@
  */
 
 import React from 'react'
-import {render} from 'react-testing-library'
+import {render} from '@testing-library/react'
 import LinkSet from '../LinkSet'
 
 function renderComponent(props) {
@@ -74,7 +74,7 @@ describe('RCE "Links" Plugin > LinkSet', () => {
       }
     })
 
-    expect(getByText('Load more results')).toBeInTheDocument()
+    expect(getByText('Load More')).toBeInTheDocument()
   })
 
   it('fetches initial data when mounted', () => {
@@ -105,7 +105,7 @@ describe('RCE "Links" Plugin > LinkSet', () => {
       fetchNextPage
     })
 
-    const loadMoreBtn = getByText('Load more results')
+    const loadMoreBtn = getByText('Load More')
     loadMoreBtn.click()
     expect(fetchNextPage).toHaveBeenCalled()
   })
@@ -140,7 +140,7 @@ describe('RCE "Links" Plugin > LinkSet', () => {
       fetchInitialPage
     })
 
-    expect(getByText('Loading...')).toBeInTheDocument()
+    expect(getByText('Loading')).toBeInTheDocument()
   })
 
 
@@ -159,6 +159,6 @@ describe('RCE "Links" Plugin > LinkSet', () => {
       fetchNextPage
     })
 
-    expect(getByText('Loading more results...')).toBeInTheDocument()
+    expect(getByText('Loading')).toBeInTheDocument()
   })
 })

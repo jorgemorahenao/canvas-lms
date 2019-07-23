@@ -19,7 +19,6 @@
 import _ from 'underscore'
 import React from 'react'
 import PropTypes from 'prop-types'
-import ReactDOM from 'react-dom'
 import I18n from 'i18n!restrict_student_access'
 import $ from 'jquery'
 import customPropTypes from 'compiled/react_files/modules/customPropTypes'
@@ -138,7 +137,7 @@ class RestrictedRadioButtons extends React.Component {
 
   isPermissionChecked = option =>
     this.state.selectedOption === option.selectedOptionKey ||
-    _.contains(option.selectedOptionKey, this.state.selectedOption)
+    _.includes(option.selectedOptionKey, this.state.selectedOption)
 
   renderPermissionOptions = () =>
     this.permissionOptions.map((option, index) => (

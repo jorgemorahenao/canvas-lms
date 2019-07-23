@@ -28,6 +28,8 @@ import I18n from 'i18n!course_images'
 import Actions from '../actions'
 import CourseImagePicker from './CourseImagePicker'
 
+let overflow = ''
+
 export default class CourseImageSelector extends React.Component {
   state = this.props.store.getState()
 
@@ -37,7 +39,18 @@ export default class CourseImageSelector extends React.Component {
     this.setState({gettingImage: true})
   }
 
-  handleModalClose = () => this.props.store.dispatch(Actions.setModalVisibility(false))
+  handleModalOpen = () => {
+    overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+
+  handleModalClose = () => {
+    document.body.style.overflow = overflow
+  }
+
+  handleModalDismiss = () => {
+    this.props.store.dispatch(Actions.setModalVisibility(false))
+  }
 
   changeImage = () => this.props.store.dispatch(Actions.setModalVisibility(true))
 
@@ -58,8 +71,8 @@ export default class CourseImageSelector extends React.Component {
             <Menu
               trigger={
                 <div className="CourseImageSelector__Button">
-                  <Button size="small" variant="circle-primary">
-                    <IconMoreLine title={I18n.t('Course image settings')} />
+                  <Button size="small" variant="circle-primary" title={I18n.t('Course image settings')} aria-label={I18n.t('Course image settings')}>
+                    <IconMoreLine/>
                   </Button>
                 </div>
               }
@@ -79,7 +92,9 @@ export default class CourseImageSelector extends React.Component {
           open={this.state.showModal}
           size="fullscreen"
           label={I18n.t('Choose Image')}
-          onDismiss={this.handleModalClose}
+          onDismiss={this.handleModalDismiss}
+          onEnter={this.handleModalOpen}
+          onExit={this.handleModalClose}
         >
           <ModalBody>
             <CourseImagePicker

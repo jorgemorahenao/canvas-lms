@@ -24,8 +24,13 @@ import View from '@instructure/ui-layout/lib/components/View'
 import FormFieldGroup from '@instructure/ui-form-field/lib/components/FormFieldGroup';
 import TextInput from '@instructure/ui-forms/lib/components/TextInput';
 import TextArea from '@instructure/ui-forms/lib/components/TextArea';
+import RadioInput from '@instructure/ui-forms/lib/components/RadioInput';
+import RadioInputGroup from '@instructure/ui-forms/lib/components/RadioInputGroup';
 import ScreenReaderContent from '@instructure/ui-a11y/lib/components/ScreenReaderContent';
 import { ToggleDetails } from '@instructure/ui-toggle-details';
+import Grid from '@instructure/ui-layout/lib/components/Grid';
+import GridRow from '@instructure/ui-layout/lib/components/Grid/GridRow';
+import GridCol from '@instructure/ui-layout/lib/components/Grid/GridCol';
 
 
 export default class AdditionalSettings extends React.Component {
@@ -43,7 +48,7 @@ export default class AdditionalSettings extends React.Component {
     const extension = {
       platform: 'canvas.instructure.com',
       settings: {
-        ...(omitBy(omit(additionalSettings, ['domain', 'tool_id']), s => !s))
+        ...(omitBy(omit(additionalSettings, ['domain', 'tool_id', 'privacy_level']), s => !s))
       }
     }
     if (additionalSettings.domain) {
@@ -52,6 +57,7 @@ export default class AdditionalSettings extends React.Component {
     if (additionalSettings.tool_id) {
       extension.tool_id = additionalSettings.tool_id
     }
+    extension.privacy_level = additionalSettings.privacy_level || 'anonymous'
     return {
       extensions: [extension],
       custom_fields
@@ -87,6 +93,11 @@ export default class AdditionalSettings extends React.Component {
     this.setState(state => ({additionalSettings: {...state.additionalSettings, selection_height: parseInt(value, 10)}}))
   }
 
+  handlePrivacyLevelChange = e => {
+    const value = e.target.value;
+    this.setState(state => ({additionalSettings: {...state.additionalSettings, privacy_level: value}}))
+  }
+
   handleSelectionWidthChange = e => {
     const value = e.target.value;
     this.setState(state => ({additionalSettings: {...state.additionalSettings, selection_width: parseInt(value, 10)}}))
@@ -101,7 +112,8 @@ export default class AdditionalSettings extends React.Component {
     const { additionalSettings, custom_fields } = this.state;
 
     return (
-      <ToggleDetails
+      <View as="div" margin="medium 0">
+        <ToggleDetails
         summary={I18n.t("Additional Settings")}
         fluidWidth
       >
@@ -113,58 +125,90 @@ export default class AdditionalSettings extends React.Component {
             description={<ScreenReaderContent>{I18n.t("Identification Values")}</ScreenReaderContent>}
             layout="columns"
           >
-            <TextInput
-              name="domain"
-              value={additionalSettings.domain}
-              label={I18n.t("Domain")}
-              onChange={this.handleDomainChange}
-            />
-            <TextInput
-              name="tool_id"
-              value={additionalSettings.tool_id}
-              label={I18n.t("Tool Id")}
-              onChange={this.handleToolIdChange}
-            />
-          </FormFieldGroup>
-          <FormFieldGroup
-            description={<ScreenReaderContent>{I18n.t("Display Values")}</ScreenReaderContent>}
-            layout="columns"
-          >
-            <TextInput
-              name="settings_icon_url"
-              value={additionalSettings.icon_url}
-              label={I18n.t("Icon Url")}
-              onChange={this.handleIconUrlChange}
-            />
-            <TextInput
-              name="text"
-              value={additionalSettings.text}
-              label={I18n.t("Text")}
-              onChange={this.handleTextChange}
-            />
-            <TextInput
-              name="selection_height"
-              value={additionalSettings.selection_height && additionalSettings.selection_height.toString()}
-              label={I18n.t("Selection Height")}
-              onChange={this.handleSelectionHeightChange}
-            />
-            <TextInput
-              name="selection_width"
-              value={additionalSettings.selection_width && additionalSettings.selection_width.toString()}
-              label={I18n.t("Selection Width")}
-              onChange={this.handleSelectionWidthChange}
-            />
-          </FormFieldGroup>
-          <TextArea
-            label={I18n.t('Custom Fields')}
-            maxHeight="10rem"
-            messages={[{text: I18n.t('One per line. Format: name=value'), type: 'hint'}]}
-            name="custom_fields"
-            value={custom_fields}
-            onChange={this.handleCustomFieldsChange}
-          />
+            <Grid>
+              <GridRow>
+                <GridCol>
+                  <TextInput
+                    name="domain"
+                    value={additionalSettings.domain}
+                    label={I18n.t("Domain")}
+                    onChange={this.handleDomainChange}
+                  />
+                </GridCol>
+                <GridCol>
+                  <TextInput
+                    name="tool_id"
+                    value={additionalSettings.tool_id}
+                    label={I18n.t("Tool Id")}
+                    onChange={this.handleToolIdChange}
+                  />
+                </GridCol>
+              </GridRow>
+              <GridRow>
+                <GridCol>
+                  <TextInput
+                    name="settings_icon_url"
+                    value={additionalSettings.icon_url}
+                    label={I18n.t("Icon Url")}
+                    onChange={this.handleIconUrlChange}
+                  />
+                </GridCol>
+                <GridCol>
+                  <TextInput
+                    name="text"
+                    value={additionalSettings.text}
+                    label={I18n.t("Text")}
+                    onChange={this.handleTextChange}
+                  />
+                </GridCol>
+                <GridCol>
+                  <TextInput
+                    name="selection_height"
+                    value={additionalSettings.selection_height && additionalSettings.selection_height.toString()}
+                    label={I18n.t("Selection Height")}
+                    onChange={this.handleSelectionHeightChange}
+                  />
+                </GridCol>
+                <GridCol>
+                  <TextInput
+                    name="selection_width"
+                    value={additionalSettings.selection_width && additionalSettings.selection_width.toString()}
+                    label={I18n.t("Selection Width")}
+                    onChange={this.handleSelectionWidthChange}
+                  />
+                </GridCol>
+              </GridRow>
+              <GridRow>
+                <GridCol>
+                  <TextArea
+                    label={I18n.t('Custom Fields')}
+                    maxHeight="10rem"
+                    messages={[{text: I18n.t('One per line. Format: name=value'), type: 'hint'}]}
+                    name="custom_fields"
+                    value={custom_fields}
+                    onChange={this.handleCustomFieldsChange}
+                  />
+                </GridCol>
+              </GridRow>
+              <GridRow>
+                <GridCol>
+                <RadioInputGroup
+                  name="privacy_level"
+                  value={additionalSettings.privacy_level || 'anonymous'}
+                  description={I18n.t('Privacy Level')}
+                  variant="toggle"
+                  onChange={this.handlePrivacyLevelChange}
+                >
+                  <RadioInput label={I18n.t('Public')} value="public"/>
+                  <RadioInput label={I18n.t('Private')} value="anonymous"/>
+                </RadioInputGroup>
+                </GridCol>
+              </GridRow>
+            </Grid>
+         </FormFieldGroup>
         </View>
       </ToggleDetails>
+      </View>
     )
   }
 }

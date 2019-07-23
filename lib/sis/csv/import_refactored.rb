@@ -35,7 +35,7 @@ module SIS
       #  * Course and Section must be imported before Xlist
       #  * Course, Section, and User must be imported before Enrollment
       IMPORTERS = %i{change_sis_id account term abstract_course course section
-                     xlist user enrollment admin group_category group group_membership
+                     xlist user login enrollment admin group_category group group_membership
                      grade_publishing_results user_observer}.freeze
 
       HEADERS_TO_EXCLUDE_FOR_DOWNLOAD = %w{password ssha_password}.freeze
@@ -58,6 +58,7 @@ module SIS
         @add_sis_stickiness = opts[:add_sis_stickiness]
         @clear_sis_stickiness = opts[:clear_sis_stickiness]
         @previous_diff_import = opts[:previous_diff_import]
+        @read_only = opts[:read_only]
 
         @total_rows = 1
         @current_row = 0
@@ -143,9 +144,11 @@ module SIS
         rows = 0
         ::CSV.open(csv[:fullpath], "rb", CSVBaseImporter::PARSE_ARGS) do |faster_csv|
           while faster_csv.shift
-            if create_importers && rows % @rows_for_parallel == 0
-              @parallel_importers[importer] ||= []
-              @parallel_importers[importer] << create_parallel_importer(csv, importer, rows)
+            unless @read_only
+              if create_importers && rows % @rows_for_parallel == 0
+                @parallel_importers[importer] ||= []
+                @parallel_importers[importer] << create_parallel_importer(csv, importer, rows)
+              end
             end
             rows += 1
           end
@@ -202,12 +205,12 @@ module SIS
       end
 
       def calculate_progress
-        (((@current_row.to_f/@total_rows) * @progress_multiplier) + @progress_offset) * 100
+        [(((@current_row.to_f/@total_rows) * @progress_multiplier) + @progress_offset) * 100, 99].min
       end
 
       def update_progress
         completed_count = @batch.parallel_importers.where(workflow_state: "completed").count
-        current_progress = (completed_count.to_f * 100 / @parallel_importers.values.map(&:count).sum).round
+        current_progress = [(completed_count.to_f * 100 / @parallel_importers.values.map(&:count).sum).round, 99].min
         SisBatch.where(:id => @batch).where("progress IS NULL or progress < ?", current_progress).update_all(progress: current_progress)
       end
 

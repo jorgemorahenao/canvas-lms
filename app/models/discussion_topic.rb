@@ -232,7 +232,7 @@ class DiscussionTopic < ActiveRecord::Base
 
   def update_subtopics
     if !self.deleted? && (self.has_group_category? || !!self.group_category_id_before_last_save)
-      send_later_if_production :refresh_subtopics
+      send_later_if_production_enqueue_args(:refresh_subtopics, :singleton => "refresh_subtopics_#{self.global_id}")
     end
   end
 
@@ -241,7 +241,7 @@ class DiscussionTopic < ActiveRecord::Base
     category = self.group_category
 
     if category && self.root_topic_id.blank? && !self.deleted?
-      category.groups.active.each do |group|
+      category.groups.active.order(:id).each do |group|
         sub_topics << ensure_child_topic_for(group)
       end
     end
@@ -287,9 +287,8 @@ class DiscussionTopic < ActiveRecord::Base
       # prevent future syncs from recreating the deleted assignment
       if is_child_content?
         old_assignment.submission_types = 'none'
-        context.master_course_subscriptions.each do |sub|
-          sub.create_content_tag_for!(old_assignment, :downstream_changes => ['workflow_state'])
-        end
+        own_tag = MasterCourses::ChildContentTag.all.polymorphic_where(:content => self).take
+        own_tag.child_subscription.create_content_tag_for!(old_assignment, :downstream_changes => ['workflow_state']) if own_tag
       end
     elsif self.assignment && @saved_by != :assignment && !self.root_topic_id
       deleted_assignment = self.assignment.deleted?

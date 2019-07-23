@@ -18,7 +18,7 @@
 if CANVAS_RAILS5_1
   gem 'rails', '5.1.6.2'
 else
-  gem 'rails', '5.2.2.1'
+  gem 'rails', '5.2.3'
 end
     gem 'loofah', '2.2.3'
 
@@ -45,28 +45,29 @@ gem 'folio-pagination', '0.0.12', require: 'folio/rails'
 
 gem 'addressable', '2.5.2', require: false
 gem "after_transaction_commit", '2.0.0'
-gem "aws-sdk-kinesis", '1.6.0', require: false
-gem "aws-sdk-s3", '1.19.0', require: false
-gem "aws-sdk-sns", '1.5.0', require: false
-gem "aws-sdk-sqs", '1.6.0', require: false
-gem "aws-sdk-core", "3.27.0", require: false
-gem "aws-sdk-kms", "1.9.0", require: false
-gem "aws-sigv4", "1.0.3", require: false
+gem "aws-sdk-dynamodb", "1.33.0"
+gem "aws-sdk-kinesis", '1.18.0', require: false
+gem "aws-sdk-s3", '1.45.0', require: false
+gem "aws-sdk-sns", '1.18.0', require: false
+gem "aws-sdk-sqs", '1.18.0', require: false
+gem "aws-sdk-core", "3.59.0", require: false
+gem "aws-sdk-kms", "1.23.0", require: false
+gem "aws-sigv4", "1.1.0", require: false
 
-gem 'barby', '0.6.5', require: false
+gem 'barby', '0.6.8', require: false
   gem 'rqrcode', '0.10.1', require: false
-  gem 'chunky_png', '1.3.10', require: false
-gem 'bcrypt', '3.1.11'
-gem 'brotli', '0.2.0', require: false
+  gem 'chunky_png', '1.3.11', require: false
+gem 'bcrypt', '3.1.13'
+gem 'brotli', '0.2.3', require: false
 gem 'canvas_connect', '0.3.11'
   gem 'adobe_connect', '1.0.8', require: false
 gem 'canvas_webex', '0.17'
-gem 'inst-jobs', '0.15.5'
+gem 'inst-jobs', '0.15.6'
   gem 'rufus-scheduler', '3.4.2', require: false
     gem 'et-orbi', '1.0.8', require: false
 gem 'switchman-inst-jobs', '1.3.3'
 gem 'inst-jobs-autoscaling', '1.0.5'
-  gem 'aws-sdk-autoscaling', '1.5.0', require: false
+  gem 'aws-sdk-autoscaling', '1.25.0', require: false
 # ffi 1.9.2x seem to have issues on RHEL & CentOS causing segfaults
 # check https://github.com/ffi/ffi/issues/621 for resolution prior to bumping version
 gem 'ffi', '1.9.18', require: false
@@ -115,7 +116,7 @@ gem 'ruby-duration', '3.2.3', require: false
 gem 'saml2', '3.0.7'
   gem 'nokogiri-xmlsec-instructure', '0.9.6', require: false
 gem 'rubycas-client', '2.3.9', require: false
-gem 'rubyzip', '1.2.1', require: 'zip'
+gem 'rubyzip', '1.2.2', require: 'zip'
 gem 'safe_yaml', '1.0.4', require: false
 gem 'sanitize', '2.1.1', require: false
 gem 'shackles', '1.4.1'
@@ -124,16 +125,16 @@ gem 'browser', '2.5.3', require: false
 
 gem 'crocodoc-ruby', '0.0.1', require: false
 gem 'sentry-raven', '2.7.2', require: false
-gem 'inst_statsd', '2.1.4'
+gem 'inst_statsd', '2.1.6'
   gem 'statsd-ruby', '1.4.0', require: false
-  gem 'aroi', '0.0.6', require: false
-  gem 'dogstatsd-ruby', '3.3.0'
+  gem 'aroi', '0.0.7', require: false
+  gem 'dogstatsd-ruby', '4.3.0'
 gem 'inst-jobs-statsd', '1.2.3'
 gem 'gepub', '1.0.1'
 gem 'imperium', '0.5.0', require: false
 gem 'academic_benchmarks', '0.0.10', require: false
 
-gem 'graphql', '1.9.3'
+gem 'graphql', '1.9.6'
 gem 'graphql-batch', '0.3.9'
 
 gem 'prawn-rails', '1.2.0'
@@ -148,6 +149,7 @@ gem 'broadcast_policy', path: "gems/broadcast_policy"
 gem 'canvas_breach_mitigation', path: 'gems/canvas_breach_mitigation'
 gem 'canvas_color', path: 'gems/canvas_color'
 gem 'canvas_crummy', path: 'gems/canvas_crummy'
+gem "canvas_dynamodb", path: "gems/canvas_dynamodb"
 gem 'canvas_ext', path: 'gems/canvas_ext'
 gem 'canvas_http', path: 'gems/canvas_http'
 gem 'canvas_kaltura', path: 'gems/canvas_kaltura'
@@ -180,8 +182,3 @@ gem 'twitter', path: 'gems/twitter'
 gem 'vericite_api', '1.5.3'
 gem 'utf8_cleaner', path: 'gems/utf8_cleaner'
 gem 'workflow', path: 'gems/workflow'
-
-group :dynamodb do
-  gem "canvas_dynamodb", path: "gems/canvas_dynamodb"
-  gem "aws-sdk-dynamodb", "1.5.0"
-end

@@ -40,6 +40,7 @@ import DueDateCalendarPicker from 'jsx/due_dates/DueDateCalendarPicker'
 import SisValidationHelper from '../../util/SisValidationHelper'
 import AssignmentExternalTools from 'jsx/assignments/AssignmentExternalTools'
 import * as returnToHelper from '../../../jsx/shared/helpers/returnToHelper'
+import 'jqueryui/tabs'
 
 RichContentEditor.preloadRemoteModule()
 
@@ -478,7 +479,7 @@ export default class EditView extends ValidatedFormView
 
   _validatePointsPossible: (data, errors) =>
     assign = data.assignment
-    frozenPoints = _.contains(assign.frozenAttributes(), "points_possible")
+    frozenPoints = _.includes(assign.frozenAttributes(), "points_possible")
 
     if !frozenPoints and assign.pointsPossible() and !numberHelper.validate(assign.pointsPossible())
       errors["assignment[points_possible]"] = [

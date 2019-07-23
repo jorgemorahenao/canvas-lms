@@ -17,7 +17,7 @@
  */
 
 import {TeacherViewContextDefaults} from './components/TeacherViewContext'
-import {fireEvent, wait, waitForElement} from 'react-testing-library'
+import {fireEvent, wait, waitForElement} from '@testing-library/react'
 import {SAVE_ASSIGNMENT} from './assignmentData'
 
 // because our version of jsdom doesn't support elt.closest('a') yet. Should soon.
@@ -176,6 +176,7 @@ export function mockSubmission(overrides) {
     __typename: 'Submission',
     gid: '1',
     lid: '1',
+    attempt: 1,
     state: 'submitted',
     submissionStatus: 'submitted',
     grade: '4',
@@ -190,6 +191,16 @@ export function mockSubmission(overrides) {
     assessorId: '3',
     assessorAssetId: '33',
     assessorAssetType: 'Submission',
+    submissionHistories: {
+      nodes: [
+        {
+          attempt: 1,
+          submittedAt: '2019-01-17T12:21:42Z',
+          score: 4
+        }
+      ]
+    },
+    submissionDraft: null,
     ...overrides
   }
 }

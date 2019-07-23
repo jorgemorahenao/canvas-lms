@@ -17,8 +17,8 @@
 %>
 
 <%
-  content_for :page_title, t('Gradebook - %{context_name}', context_name: @context.name)
-  @body_classes << "gradebook full-width"
+  provide :page_title, t('Gradebook - %{context_name}', context_name: @context.name)
+  add_body_class "gradebook full-width"
   @show_left_side = true
   @collapse_course_menu = true
   @show_embedded_chat = false
@@ -63,6 +63,10 @@
 
         <% if multiple_sections? %>
           <div class="gradebook-filter-container" id="sections-filter-container"></div>
+        <% end %>
+
+        <% if student_groups? %>
+          <div class="gradebook-filter-container" id="student-group-filter-container"></div>
         <% end %>
 
         <div class="gradebook-filter-container gradebook_filter" id="search-filter-container">

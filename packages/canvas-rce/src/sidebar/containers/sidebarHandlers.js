@@ -23,12 +23,14 @@ import {
   createMediaServerSession,
   fetchFolders,
   openOrCloseUploadForm,
+  saveMediaRecording,
   uploadPreflight,
   uploadToMediaFolder
 } from "../actions/upload";
 import { searchFlickr, openOrCloseFlickrForm } from "../actions/flickr";
 import { toggle as toggleFolder } from "../actions/files";
 import { openOrCloseNewPageForm } from "../actions/links";
+import { fetchInitialDocs, fetchNextDocs } from "../actions/documents";
 
 export default function propsFromDispatch(dispatch) {
   return {
@@ -47,6 +49,9 @@ export default function propsFromDispatch(dispatch) {
     toggleNewPageForm: () => dispatch(openOrCloseNewPageForm()),
     startMediaUpload: (tabContext, fileMetaProps) =>
       dispatch(uploadToMediaFolder(tabContext, fileMetaProps)),
-    createMediaServerSession: (props) => dispatch(createMediaServerSession(props))
+    createMediaServerSession: () => dispatch(createMediaServerSession()),
+    saveMediaRecording: (file, editor, dismiss) => dispatch(saveMediaRecording(file, editor, dismiss)),
+    fetchInitialDocs: key => dispatch(fetchInitialDocs(key)),
+    fetchNextDocs: key => dispatch(fetchNextDocs(key))
   };
 }

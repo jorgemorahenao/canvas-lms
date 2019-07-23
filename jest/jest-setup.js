@@ -21,7 +21,7 @@ import Adapter from 'enzyme-adapter-react-16'
 
 const errorsToIgnore = ["Warning: [Focusable] Exactly one tabbable child is required (0 found)."];
 
-window.fetch = require('unfetch')
+window.fetch = require('jest-fetch-mock')
 
 /* eslint-disable-next-line */
 const _consoleDotError = console.error
@@ -47,7 +47,7 @@ if (process.env.DEPRECATION_SENTRY_DSN) {
     release: process.env.GIT_COMMIT
   }).install();
 
-  const setupRavenConsoleLoggingPlugin = require('../app/jsx/shared/helpers/setupRavenConsoleLoggingPlugin');
+  const setupRavenConsoleLoggingPlugin = require('../app/jsx/shared/helpers/setupRavenConsoleLoggingPlugin').default;
   setupRavenConsoleLoggingPlugin(Raven, { loggerName: 'console-jest' });
 }
 

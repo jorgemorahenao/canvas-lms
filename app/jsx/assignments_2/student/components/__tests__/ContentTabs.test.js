@@ -17,30 +17,122 @@
  */
 
 import ContentTabs from '../ContentTabs'
-import {mockAssignment} from '../../test-utils'
+import {mockAssignmentAndSubmission} from '../../mocks'
 import {MockedProvider} from 'react-apollo/test-utils'
 import React from 'react'
-import {render} from 'react-testing-library'
+import {render} from '@testing-library/react'
+import {SubmissionMocks} from '../../graphqlData/Submission'
 
-it('renders the content tabs', () => {
-  const {getAllByTestId} = render(
-    <MockedProvider>
-      <ContentTabs assignment={mockAssignment()} />
-    </MockedProvider>
-  )
-  expect(getAllByTestId('assignment-2-student-content-tabs')).toHaveLength(1)
-})
+describe('ContentTabs', () => {
+  it('renders the content tabs', async () => {
+    const props = await mockAssignmentAndSubmission()
+    const {getAllByTestId} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+    expect(getAllByTestId('assignment-2-student-content-tabs')).toHaveLength(1)
+  })
 
-it('renders the tabs in the correct order', () => {
-  const {getAllByRole, getByText} = render(
-    <MockedProvider>
-      <ContentTabs assignment={mockAssignment()} />
-    </MockedProvider>
-  )
-  const tabs = getAllByRole('tab')
+  it('renders the tabs in the correct order', async () => {
+    const props = await mockAssignmentAndSubmission({
+      Submission: () => ({attempt: 1})
+    })
+    const {getAllByRole, getByText, getAllByText} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+    const tabs = getAllByRole('tab')
 
-  expect(tabs).toHaveLength(3)
-  expect(tabs[0]).toContainElement(getByText('Upload'))
-  expect(tabs[1]).toContainElement(getByText('Comments'))
-  expect(tabs[2]).toContainElement(getByText('Rubric'))
+    expect(tabs).toHaveLength(3)
+    expect(tabs[0]).toContainElement(getByText('Attempt 1'))
+    expect(tabs[1]).toContainElement(getAllByText('Comments')[0])
+    expect(tabs[2]).toContainElement(getAllByText('Rubric')[0])
+  })
+
+  it('titles the attempt tab as Attempt 1 on a brand new submission', async () => {
+    const props = await mockAssignmentAndSubmission({
+      Submission: () => ({attempt: 0})
+    })
+    const {getAllByRole, getByText} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+    const tabs = getAllByRole('tab')
+    expect(tabs[0]).toContainElement(getByText('Attempt 1'))
+  })
+
+  it('titles the attempt tab with the correct attempt number on a submission with multiple attempts', async () => {
+    const props = await mockAssignmentAndSubmission({
+      Submission: () => ({attempt: 50})
+    })
+    const {getAllByRole, getByText} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+    const tabs = getAllByRole('tab')
+    expect(tabs[0]).toContainElement(getByText('Attempt 50'))
+  })
+
+  it('displays the submitted time and grade of the current submission if it has been submitted', async () => {
+    const props = await mockAssignmentAndSubmission({
+      Submission: () => SubmissionMocks.submitted
+    })
+
+    const {getByTestId, getByText} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+
+    expect(getByText('Submitted')).toBeInTheDocument()
+    expect(getByTestId('friendly-date-time')).toBeInTheDocument()
+    expect(getByTestId('grade-display')).toBeInTheDocument()
+  })
+
+  it('displays Not submitted if the submission has been graded but not submitted', async () => {
+    const props = await mockAssignmentAndSubmission({
+      Submission: () => ({state: 'graded'})
+    })
+    const {getByText, queryByTestId} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+
+    expect(queryByTestId('friendly-date-time')).not.toBeInTheDocument()
+    expect(getByText('Not submitted')).toBeInTheDocument()
+  })
+
+  it('displays the submitted time and grade of the current submission if it has been graded', async () => {
+    const props = await mockAssignmentAndSubmission({
+      Submission: () => SubmissionMocks.graded
+    })
+
+    const {getByTestId, getByText} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+
+    expect(getByText('Submitted')).toBeInTheDocument()
+    expect(getByTestId('friendly-date-time')).toBeInTheDocument()
+    expect(getByTestId('grade-display')).toBeInTheDocument()
+  })
+
+  it('does not display the submitted time or grade of the current submission if it is unsubmitted', async () => {
+    const props = await mockAssignmentAndSubmission()
+    const {queryByTestId, queryByText} = render(
+      <MockedProvider>
+        <ContentTabs {...props} />
+      </MockedProvider>
+    )
+
+    expect(queryByText('Submitted')).toBeNull()
+    expect(queryByTestId('friendly-date-time')).toBeNull()
+    expect(queryByTestId('grade-display')).toBeNull()
+  })
 })

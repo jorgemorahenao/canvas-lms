@@ -96,6 +96,10 @@ module Lti
 #         "error_report": {
 #            "description": "A message describing the error. If set, the workflow_state will become 'error.'",
 #            "type": "String"
+#         },
+#         "submission_time": {
+#            "description": "The submitted_at date time of the submission.",
+#            "type": "datetime"
 #         }
 #       }
 #     }
@@ -120,6 +124,13 @@ module Lti
     before_action :find_originality_report
     before_action :report_in_context, only: [:show, :update]
     before_action :ensure_tool_proxy_associated
+
+    # NOTE
+    # The LTI 2/Live Events plagiarism detection platform lives
+    # alongside two other plagiarism solutions:
+    # the Vericite plugin and the Turnitin pugin. When making changes
+    # to any of these three services verify no regressions are
+    # introduced in the others.
 
     # @API Create an Originality Report
     # Create a new OriginalityReport for the specified file
@@ -367,9 +378,18 @@ module Lti
     def find_originality_report
       raise ActiveRecord::RecordNotFound if submission.blank?
       @report = OriginalityReport.find_by(id: params[:id])
-      @report ||= (OriginalityReport.find_by(attachment_id: attachment&.id) if attachment.present?)
+      @report ||= report_by_attachment(attachment)
       return if params[:originality_report].blank? || attachment.present?
       @report ||= submission.originality_reports.find_by(attachment: nil) unless attachment_required?
+    end
+
+    def report_by_attachment(attachment)
+      return if attachment.blank?
+      if submission.present?
+        OriginalityReport.find_by(attachment_id: attachment&.id, submission: submission)
+      else
+        OriginalityReport.find_by(attachment_id: attachment&.id)
+      end
     end
 
     def report_in_context

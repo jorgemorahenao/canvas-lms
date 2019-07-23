@@ -26,6 +26,9 @@
   "cancel_image_upload_2c771950": {
     "message": "Відмінити завантаження зображення"
   },
+  "canvas_plugins_705a5016": {
+    "message": "Canvas Модулі"
+  },
   "cc_attribution_f6de631f": {
     "message": "CC Атрибуція"
   },
@@ -92,6 +95,9 @@
   "creative_commons_license_725584ae": {
     "message": "Ліцензія Creative Commons:"
   },
+  "custom_6979cd81": {
+    "message": "Звичай"
+  },
   "decorative_image_fde98579": {
     "message": "Декоративне зображення"
   },
@@ -104,8 +110,14 @@
   "discussions_index_6c36ced": {
     "message": "Індекс обговорення"
   },
+  "done_54e3d4b6": {
+    "message": "Готово"
+  },
   "due_multiple_dates_cc0ee3f5": {
     "message": "Очікується: Кілька дат"
+  },
+  "embed_image_1080badc": {
+    "message": "Вставити забраження"
   },
   "enter_search_terms_e397b1f0": {
     "message": "введіть умови пошуку"
@@ -124,6 +136,9 @@
   },
   "folder_705fd2d7": {
     "message": "Папка"
+  },
+  "generating_preview_45b53be0": {
+    "message": "Генерується попередній перегляд..."
   },
   "grades_a61eba0a": {
     "message": "Оцінки"
@@ -146,9 +161,6 @@
   "image_upload_form_7b74079a": {
     "message": "Форма завантаження зображення"
   },
-  "image_url_2aee2734": {
-    "message": "Адреса зображення"
-  },
   "images_7ce26570": {
     "message": "Зображення"
   },
@@ -166,6 +178,9 @@
   },
   "invalid_file_type_881cc9b2": {
     "message": "Недійсний тип файлу"
+  },
+  "keyboard_shortcuts_ed1844bd": {
+    "message": "Гарячі клавіши"
   },
   "link_7262adec": {
     "message": "Посилання"
@@ -197,17 +212,17 @@
   "loading_folders_8d4d5d5a": {
     "message": "Завантаження папок ..."
   },
-  "loading_more_results_def6df65": {
-    "message": "Завантажити більше результатів..."
-  },
-  "media_af190855": {
-    "message": "Носій інформації"
-  },
   "modules_c4325335": {
     "message": "Розділи"
   },
+  "next_page_d2a39853": {
+    "message": "Наступна Сторінка"
+  },
   "no_results_940393cf": {
     "message": "Результати відсутні."
+  },
+  "open_this_keyboard_shortcuts_dialog_9658b83a": {
+    "message": "Вікрити діалогове вікно гарячих клавіш"
   },
   "options_3ab0ea65": {
     "message": "Параметри"
@@ -217,6 +232,9 @@
   },
   "people_b4ebb13c": {
     "message": "Люди"
+  },
+  "previous_page_928fc112": {
+    "message": "Попередня сторінка"
   },
   "published_c944a23d": {
     "message": "опубліковано"
@@ -233,6 +251,9 @@
   "recording_98da6bda": {
     "message": "Запис"
   },
+  "rich_content_editor_2708ef21": {
+    "message": "Редактор збагаченого контенту"
+  },
   "save_11a80ec3": {
     "message": "Зберегти"
   },
@@ -247,6 +268,12 @@
   },
   "select_a_folder_to_upload_your_file_into_b82d12b": {
     "message": "Виберіть теку, до якої завантажити ваш файл"
+  },
+  "selected_274ce24f": {
+    "message": "Обраний"
+  },
+  "size_b30e1077": {
+    "message": "Розмір"
   },
   "start_over_f7552aa9": {
     "message": "Почати з початку"

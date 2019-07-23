@@ -17,18 +17,21 @@
  */
 
 import Header from '../Header'
-import {mockAssignment} from '../../test-utils'
+import {mockAssignmentAndSubmission, mockSubmission} from '../../mocks'
 import React from 'react'
-import {render} from 'react-testing-library'
+import {render} from '@testing-library/react'
+import StudentViewContext from '../Context'
+import {SubmissionMocks} from '../../graphqlData/Submission'
 
-it('renders normally', () => {
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={mockAssignment()} />)
-
+it('renders normally', async () => {
+  const props = await mockAssignmentAndSubmission()
+  const {getByTestId} = render(<Header {...props} />)
   expect(getByTestId('assignment-student-header-normal')).toBeInTheDocument()
 })
 
-it('dispatches scroll event properly when less than threshold', () => {
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={mockAssignment()} />)
+it('dispatches scroll event properly when less than threshold', async () => {
+  const props = await mockAssignmentAndSubmission()
+  const {getByTestId} = render(<Header {...props} />)
   const scrollEvent = new Event('scroll')
   window.pageYOffset = 100
   window.dispatchEvent(scrollEvent)
@@ -36,8 +39,9 @@ it('dispatches scroll event properly when less than threshold', () => {
   expect(getByTestId('assignment-student-pizza-header-normal')).toBeInTheDocument()
 })
 
-it('dispatches scroll event properly when greater than threshold', () => {
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={mockAssignment()} />)
+it('dispatches scroll event properly when greater than threshold', async () => {
+  const props = await mockAssignmentAndSubmission()
+  const {getByTestId} = render(<Header {...props} />)
   const scrollEvent = new Event('scroll')
   window.pageYOffset = 500
   window.dispatchEvent(scrollEvent)
@@ -45,8 +49,9 @@ it('dispatches scroll event properly when greater than threshold', () => {
   expect(getByTestId('assignment-student-pizza-header-sticky')).toBeInTheDocument()
 })
 
-it('displays element filler when scroll offset is in correct place', () => {
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={mockAssignment()} />)
+it('displays element filler when scroll offset is in correct place', async () => {
+  const props = await mockAssignmentAndSubmission()
+  const {getByTestId} = render(<Header {...props} />)
   const scrollEvent = new Event('scroll')
   window.pageYOffset = 100
   window.dispatchEvent(scrollEvent)
@@ -60,134 +65,83 @@ it('displays element filler when scroll offset is in correct place', () => {
   expect(getByTestId('assignment-student-header-sticky')).toBeInTheDocument()
 })
 
-it('will not render LatePolicyStatusDisplay if the submission is not late', () => {
-  const assignment = mockAssignment()
-  assignment.submissionsConnection.nodes[0].latePolicyStatus = null
-  assignment.submissionsConnection.nodes[0].submissionStatus = null
-  const {queryByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
+it('will render the uncollapsed step container when scroll offset is less than scroll threshold', async () => {
+  const props = await mockAssignmentAndSubmission({
+    Submission: () => SubmissionMocks.submitted
+  })
+  const {getByTestId, queryByTestId} = render(<Header {...props} />)
+  const scrollEvent = new Event('scroll')
 
+  window.pageYOffset = 100
+  window.dispatchEvent(scrollEvent)
+
+  expect(getByTestId('submitted-step-container')).toBeInTheDocument()
+  expect(queryByTestId('collapsed-step-container')).not.toBeInTheDocument()
+})
+
+it('will render the collapsed step container when scroll offset is greater than scroll threshold', async () => {
+  const props = await mockAssignmentAndSubmission()
+  const {getByTestId} = render(<Header {...props} />)
+  const scrollEvent = new Event('scroll')
+
+  window.pageYOffset = 200
+  window.dispatchEvent(scrollEvent)
+
+  expect(getByTestId('collapsed-step-container')).toBeInTheDocument()
+})
+
+it('will not render LatePolicyStatusDisplay if the submission is not late', async () => {
+  const props = await mockAssignmentAndSubmission()
+  const {queryByTestId} = render(<Header {...props} />)
   expect(queryByTestId('late-policy-container')).not.toBeInTheDocument()
 })
 
-it('will render LatePolicyStatusDisplay if the submission status is late', () => {
-  const assignment = mockAssignment()
-  assignment.submissionsConnection.nodes[0].latePolicyStatus = null
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
+it('will render LatePolicyStatusDisplay if the submission status is late', async () => {
+  const props = await mockAssignmentAndSubmission({
+    Submission: () => ({
+      ...SubmissionMocks.graded,
+      submissionStatus: 'late'
+    })
+  })
+  const {getByTestId} = render(<Header {...props} />)
   expect(getByTestId('late-policy-container')).toBeInTheDocument()
 })
 
-it('will render LatePolicyStatusDisplay if the latePolicyStatus is late status is late', () => {
-  const assignment = mockAssignment()
-  assignment.submissionsConnection.nodes[0].submissionStatus = null
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
+it('will render LatePolicyStatusDisplay if the latePolicyStatus is late', async () => {
+  const props = await mockAssignmentAndSubmission({
+    Submission: () => ({
+      ...SubmissionMocks.graded,
+      latePolicyStatus: 'late'
+    })
+  })
+  const {getByTestId} = render(<Header {...props} />)
   expect(getByTestId('late-policy-container')).toBeInTheDocument()
 })
 
-it('will render the unavailable state tracker if an assignment is not available', () => {
-  const assignment = mockAssignment()
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
-  expect(getByTestId('unavailable-step-container')).toBeInTheDocument()
-})
-
-it('will render the available state tracker if an assignment is available but not uploaded and not submitted', () => {
-  const assignment = mockAssignment()
-  assignment.lockInfo.isLocked = false
-  assignment.submissionsConnection.nodes[0].state = 'unsubmitted'
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
-  expect(getByTestId('available-step-container')).toBeInTheDocument()
-})
-
-describe('the assignment is submitted', () => {
-  it('will render the submitted state tracker if an assignment is submitted but not graded', () => {
-    const assignment = mockAssignment()
-    assignment.lockInfo.isLocked = false
-    assignment.submissionsConnection.nodes[0].state = 'submitted'
-    const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
-    expect(getByTestId('submitted-step-container')).toBeInTheDocument()
-  })
-
-  it('will render the New Attempt button if more attempts are allowed', () => {
-    const assignment = mockAssignment()
-    assignment.lockInfo.isLocked = false
-    assignment.submissionsConnection.nodes[0].state = 'submitted'
-    const {getByTestId, getByText} = render(
-      <Header scrollThreshold={150} assignment={assignment} />
-    )
-
-    expect(getByTestId('submitted-step-container')).toContainElement(getByText('New Attempt'))
-  })
-
-  it('will not render the New Attempt button if more attempts are not allowed', () => {
-    const assignment = mockAssignment({
-      allowedAttempts: 1
+it('will render the latest grade instead of the displayed submissions grade', async () => {
+  const latestSubmission = await mockSubmission({
+    Submission: () => ({
+      ...SubmissionMocks.graded,
+      grade: '147',
+      enteredGrade: '147'
     })
-    assignment.lockInfo.isLocked = false
-    assignment.submissionsConnection.nodes[0].state = 'submitted'
-    const {getByTestId, queryByText} = render(
-      <Header scrollThreshold={150} assignment={assignment} />
-    )
-
-    expect(getByTestId('submitted-step-container')).not.toContainElement(queryByText('New Attempt'))
-  })
-})
-
-it('will render the uploaded state tracker if an assignment is uploaded but not submitted', () => {
-  const assignment = mockAssignment()
-  assignment.submissionsConnection.nodes[0].submissionDraft = {
-    _id: 3
-  }
-  assignment.lockInfo.isLocked = false
-  assignment.submissionsConnection.nodes[0].state = 'unsubmitted'
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
-  expect(getByTestId('uploaded-step-container')).toBeInTheDocument()
-})
-
-it('will render the submitted state tracker if an assignment is submitted but not graded', () => {
-  const assignment = mockAssignment()
-  assignment.lockInfo.isLocked = false
-  assignment.submissionsConnection.nodes[0].state = 'submitted'
-  const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
-  expect(getByTestId('submitted-step-container')).toBeInTheDocument()
-})
-
-describe('the assignment is graded', () => {
-  it('will render the graded state tracker if an assignment is graded', () => {
-    const assignment = mockAssignment()
-    assignment.lockInfo.isLocked = false
-    assignment.submissionsConnection.nodes[0].state = 'graded'
-    const {getByTestId} = render(<Header scrollThreshold={150} assignment={assignment} />)
-
-    expect(getByTestId('graded-step-container')).toBeInTheDocument()
   })
 
-  it('will render the New Attempt button if more attempts are allowed', () => {
-    const assignment = mockAssignment()
-    assignment.lockInfo.isLocked = false
-    assignment.submissionsConnection.nodes[0].state = 'graded'
-    const {getByTestId, getByText} = render(
-      <Header scrollThreshold={150} assignment={assignment} />
-    )
-
-    expect(getByTestId('graded-step-container')).toContainElement(getByText('New Attempt'))
-  })
-
-  it('will not render the New Attempt button if more attempts are not allowed', () => {
-    const assignment = mockAssignment({
-      allowedAttempts: 1
+  const props = await mockAssignmentAndSubmission({
+    Assignment: () => ({pointsPossible: 150}),
+    Submission: () => ({
+      ...SubmissionMocks.graded,
+      grade: '131',
+      enteredGrade: '131'
     })
-    assignment.lockInfo.isLocked = false
-    assignment.submissionsConnection.nodes[0].state = 'graded'
-    const {getByTestId, queryByText} = render(
-      <Header scrollThreshold={150} assignment={assignment} />
-    )
-
-    expect(getByTestId('graded-step-container')).not.toContainElement(queryByText('New Attempt'))
   })
+
+  const {queryByText, queryAllByText} = render(
+    <StudentViewContext.Provider value={{latestSubmission}}>
+      <Header {...props} />
+    </StudentViewContext.Provider>
+  )
+
+  expect(queryAllByText('147/150 Points')[0]).toBeInTheDocument()
+  expect(queryByText('131/150 Points')).not.toBeInTheDocument()
 })

@@ -20,22 +20,20 @@ import {
   commentGraphqlMock,
   mockAssignment,
   mockComments,
+  legacyMockSubmission,
   mockMultipleAttachments
 } from '../../test-utils'
-import {fireEvent, render, waitForElement} from 'react-testing-library'
+import {fireEvent, render, waitForElement} from '@testing-library/react'
 import {MockedProvider} from 'react-apollo/test-utils'
 import React from 'react'
 
-import CommentTextArea from '../Comments/CommentTextArea'
-import Comments from '../Comments'
+import CommentTextArea from '../CommentsTab/CommentTextArea'
+import CommentsTab from '../CommentsTab'
 import * as uploadFileModule from '../../../../shared/upload_file'
 
 describe('CommentTextArea', () => {
   beforeAll(() => {
     window.URL.createObjectURL = jest.fn()
-  })
-
-  beforeEach(() => {
     $('body').append('<div role="alert" id="flash_screenreader_holder" />')
   })
 
@@ -50,7 +48,7 @@ describe('CommentTextArea', () => {
   it('renders the CommentTextArea by default', async () => {
     const {getByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     expect(getByText('Attach a File')).toBeInTheDocument()
@@ -59,7 +57,7 @@ describe('CommentTextArea', () => {
   it('renders the input for controlling file inputs', async () => {
     const {container} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     expect(container.querySelector('input[id="attachmentFile"]')).toBeInTheDocument()
@@ -68,7 +66,7 @@ describe('CommentTextArea', () => {
   it('renders the same number of attachments as files', async () => {
     const {container, getByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const fileInput = await waitForElement(() =>
@@ -88,7 +86,7 @@ describe('CommentTextArea', () => {
   it('concats to previously uploaded files', async () => {
     const {container, getByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const fileInput = await waitForElement(() =>
@@ -116,7 +114,7 @@ describe('CommentTextArea', () => {
   it('can remove uploaded files', async () => {
     const {container, getByText, queryByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const fileInput = await waitForElement(() =>
@@ -145,7 +143,7 @@ describe('CommentTextArea', () => {
   it('sets focus to the attachment file button after removing all attachments', async () => {
     const {container, getByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const fileInput = await waitForElement(() =>
@@ -168,7 +166,7 @@ describe('CommentTextArea', () => {
   it('sets focus to the next file in the list if the first file is removed', async () => {
     const {container, getByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const fileInput = await waitForElement(() =>
@@ -195,7 +193,7 @@ describe('CommentTextArea', () => {
   it('sets focus to the previous file in the list if any other file is removed', async () => {
     const {container, getByText} = render(
       <MockedProvider>
-        <CommentTextArea assignment={mockAssignment()} />
+        <CommentTextArea assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const fileInput = await waitForElement(() =>
@@ -231,7 +229,7 @@ describe('CommentTextArea', () => {
     const basicMock = commentGraphqlMock(mockedComments)
     const {container, getByPlaceholderText, getByText} = render(
       <MockedProvider mocks={basicMock} addTypename>
-        <Comments assignment={mockAssignment()} />
+        <CommentsTab assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const textArea = await waitForElement(() => getByPlaceholderText('Submit a Comment'))
@@ -264,7 +262,7 @@ describe('CommentTextArea', () => {
     const basicMock = commentGraphqlMock(mockedComments)
     const {getByPlaceholderText, getByText, queryAllByText} = render(
       <MockedProvider mocks={basicMock} addTypename>
-        <Comments assignment={mockAssignment()} />
+        <CommentsTab assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const textArea = await waitForElement(() => getByPlaceholderText('Submit a Comment'))
@@ -289,7 +287,7 @@ describe('CommentTextArea', () => {
 
     const {container, getByPlaceholderText, getByText} = render(
       <MockedProvider defaultOptions={{mutate: {errorPolicy: 'all'}}} mocks={errorMock} addTypename>
-        <Comments assignment={mockAssignment()} />
+        <CommentsTab assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const textArea = await waitForElement(() => getByPlaceholderText('Submit a Comment'))
@@ -321,7 +319,7 @@ describe('CommentTextArea', () => {
     const basicMock = commentGraphqlMock(mockedComments)
     const {container, getByPlaceholderText, getByText, queryAllByText} = render(
       <MockedProvider mocks={basicMock} addTypename>
-        <Comments assignment={mockAssignment()} />
+        <CommentsTab assignment={mockAssignment()} submission={legacyMockSubmission()} />
       </MockedProvider>
     )
     const textArea = await waitForElement(() => getByPlaceholderText('Submit a Comment'))

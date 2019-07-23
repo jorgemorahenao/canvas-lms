@@ -39,10 +39,15 @@
 
 .ImageSearch__item {
   height: $ic-sp*10;
-  margin: $ic-sp;
   position: relative;
   background: transparent;
   border: none;
+  padding: 0;
+
+  &:focus {
+    outline: 2px solid var(--ic-brand-primary);
+    outline-offset: 2px;
+  }
 }
 
 .ImageSearch__screenreader {
@@ -52,7 +57,43 @@
   position: absolute;
 }
 
-.ImageSearch__display {
+.ImageSearch__img {
   width: auto;
   height: 100%;
+}
+
+.ImageSearch__wrapper {
+  position: relative;
+  margin: $ic-sp;
+}
+
+.ImageSearch__attribution {
+  position: absolute;
+  bottom: 0;
+  left: 0; /* stylelint-disable-line property-blacklist */
+  width: 100%;
+  min-height: 8px;
+  opacity: 0;
+  background-color: rgba($ic-color-dark, 1);
+  z-index: 99;
+}
+
+.ImageSearch__wrapper:focus-within .ImageSearch__attribution {
+  opacity: 0.8;
+}
+
+.ImageSearch__wrapper:hover .ImageSearch__attribution {
+  opacity: 0.8;
+}
+
+.ImageSearch__attribution {
+  & a, & a:link, & a:visited, & a:focus, & a:hover {
+    color: rgba($ic-color-light, 1);
+    overflow: wrap;
+    margin: 0 .25rem;
+  }
+
+  & a:focus, & a:hover {
+    outline: 1px solid rgba($ic-color-light, 1);
+  }
 }

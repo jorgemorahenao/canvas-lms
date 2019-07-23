@@ -34,6 +34,7 @@ class DeveloperKey < ActiveRecord::Base
   has_one :tool_configuration, class_name: 'Lti::ToolConfiguration', dependent: :destroy, inverse_of: :developer_key
   serialize :scopes, Array
 
+  before_validation :normalize_public_jwk_url
   before_validation :validate_scopes!
   before_create :generate_api_key
   before_create :set_auto_expire_tokens
@@ -46,9 +47,10 @@ class DeveloperKey < ActiveRecord::Base
   after_update :destroy_external_tools!, if: :destroy_external_tools?
   after_create :create_default_account_binding
 
-  validates_as_url :redirect_uri, :oidc_initiation_url, allowed_schemes: nil
+  validates_as_url :redirect_uri, :oidc_initiation_url, :public_jwk_url, allowed_schemes: nil
   validate :validate_redirect_uris
   validate :validate_public_jwk
+  validate :validate_lti_fields
 
   attr_reader :private_jwk
 
@@ -296,6 +298,16 @@ class DeveloperKey < ActiveRecord::Base
 
   private
 
+  def validate_lti_fields
+    return unless self.is_lti_key?
+    return if self.public_jwk.present? || self.public_jwk_url.present?
+    errors.add(:lti_key, "developer key must have public jwk or public jwk url")
+  end
+
+  def normalize_public_jwk_url
+    self.public_jwk_url = nil if self.public_jwk_url.blank?
+  end
+
   def manage_external_tools(enqueue_args, method, affected_account)
     return if tool_configuration.blank?
 
@@ -437,7 +449,7 @@ class DeveloperKey < ActiveRecord::Base
 
   def set_require_scopes
     # Prevent RSA keys from having API access
-    self.require_scopes = true if public_jwk.present?
+    self.require_scopes = true if public_jwk.present? || public_jwk_url.present?
   end
 
   def validate_scopes!
