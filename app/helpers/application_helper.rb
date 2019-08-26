@@ -198,6 +198,7 @@ module ApplicationHelper
       chunk_urls.each { |url| concat preload_link_tag(url) }
 
       concat javascript_include_tag(*(paths + chunk_urls), defer: true)
+      concat include_js_bundles
     end
   end
 
@@ -206,10 +207,16 @@ module ApplicationHelper
     # and let the browser know it needs to start downloading all of these chunks
     # even before any webpack code runs. It will put a <link rel="preload" ...>
     # for every chunk that is needed by any of the things you `js_bundle` in your rails controllers/views
-    preload_chunks = js_bundles.map do |(bundle, plugin)|
+    @rendered_js_bundles ||= []
+    new_js_bundles = js_bundles - @rendered_js_bundles
+    @rendered_js_bundles += new_js_bundles
+
+    @rendered_preload_chunks ||= []
+    preload_chunks = new_js_bundles.map do |(bundle, plugin)|
       key = "#{plugin ? "#{plugin}-" : ''}#{bundle}"
       Canvas::Cdn::RevManifest.all_webpack_chunks_for(key)
-    end.flatten.uniq - @script_chunks # subtract out the ones we already preloaded in the <head>
+    end.flatten.uniq - @script_chunks - @rendered_preload_chunks # subtract out the ones we already preloaded in the <head>
+    @rendered_preload_chunks += preload_chunks
 
     capture do
       preload_chunks.each { |url| concat preload_link_tag("#{js_base_url}/#{url}") }
@@ -219,9 +226,9 @@ module ApplicationHelper
       # to load that "js_bundle". And by the time that runs, the browser will have already
       # started downloading those script urls because of those preload tags above,
       # so it will not cause a new request to be made.
-      concat javascript_tag js_bundles.map { |(bundle, plugin)|
+      concat javascript_tag new_js_bundles.map { |(bundle, plugin)|
         "(window.bundles || (window.bundles = [])).push('#{plugin ? "#{plugin}-" : ''}#{bundle}');"
-      }.join("\n")
+      }.join("\n") if new_js_bundles.present?
     end
   end
 
@@ -688,7 +695,7 @@ module ApplicationHelper
   end
   private :brand_config_account
 
-  def include_account_js(options = {})
+  def include_account_js
     return if params[:global_includes] == '0' || !@domain_root_account
 
     includes = if @domain_root_account.allow_global_includes? && (abc = active_brand_config(ignore_high_contrast_preference: true))
@@ -698,7 +705,6 @@ module ApplicationHelper
     end
 
     if includes.present?
-      includes.unshift("/node_modules/jquery/jquery.js") if options[:raw]
       javascript_include_tag(*includes, defer: true)
     end
   end
@@ -854,8 +860,16 @@ module ApplicationHelper
     end
   end
 
+  def content_for_head(string)
+    (@content_for_head ||= []) << string
+  end
+
+  def add_meta_tag(tag)
+    @meta_tags ||= []
+    @meta_tags << tag
+  end
+
   def include_custom_meta_tags
-    add_csp_for_root
     js_env(csp: csp_iframe_attribute) if csp_enforced?
 
     output = []
@@ -885,7 +899,7 @@ module ApplicationHelper
           # search for an attachment association
           aas = attachment.attachment_associations.where(context_type: 'Submission').preload(:context).to_a
           ActiveRecord::Associations::Preloader.new.preload(aas.map(&:submission), assignment: :context)
-          courses = aas.map { |aa| aa.submission.assignment.course }.uniq
+          courses = aas.map { |aa| aa&.submission&.assignment&.course }.uniq
           if courses.length == 1
             @csp_context_is_submission = true
             courses.first
@@ -941,6 +955,7 @@ module ApplicationHelper
   end
 
   def add_csp_for_root
+    return unless request.format.html? || request.format == "*/*"
     return unless csp_enabled?
     return if csp_report_uri.empty? && !csp_enforced?
 
@@ -1014,14 +1029,15 @@ module ApplicationHelper
     super
   end
 
-  def generate_access_verifier(return_url: nil)
+  def generate_access_verifier(return_url: nil, fallback_url: nil)
     Users::AccessVerifier.generate(
       user: @current_user,
       real_user: logged_in_user,
       developer_key: @access_token&.developer_key,
       root_account: @domain_root_account,
       oauth_host: request.host_with_port,
-      return_url: return_url
+      return_url: return_url,
+      fallback_url: fallback_url
     )
   end
 
@@ -1193,6 +1209,15 @@ module ApplicationHelper
     # deferred redirect through route because it may be saved for later use
     # after a direct link to attachment.thumbnail_url would have expired
     super(attachment, uuid || attachment.uuid, url_options)
+  end
+
+  def prefetch_assignment_external_tools
+    content_tag(:div, id: 'assignment_external_tools') do
+      prefetch_xhr(api_v1_course_launch_definitions_path(
+        @context,
+        'placements[]' => 'assignment_view'
+      ))
+    end
   end
 
   if CANVAS_RAILS5_1

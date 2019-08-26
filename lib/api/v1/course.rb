@@ -31,6 +31,7 @@ module Api::V1::Course
     settings[:allow_student_discussion_topics] = course.allow_student_discussion_topics?
     settings[:allow_student_forum_attachments] = course.allow_student_forum_attachments?
     settings[:allow_student_discussion_editing] = course.allow_student_discussion_editing?
+    settings[:filter_speed_grader_by_student_group] = course.filter_speed_grader_by_student_group?
     settings[:grading_standard_enabled] = course.grading_standard_enabled?
     settings[:grading_standard_id] = course.grading_standard_id
     settings[:allow_student_organized_groups] = course.allow_student_organized_groups?
@@ -99,7 +100,7 @@ module Api::V1::Course
       hash['sections'] = section_enrollments_json(enrollments) if includes.include?('sections')
       hash['total_students'] = course.student_count || course.student_enrollments.not_fake.distinct.count(:user_id) if includes.include?('total_students')
       hash['passback_status'] = post_grades_status_json(course) if includes.include?('passback_status')
-      hash['is_favorite'] = course.favorite_for_user?(user) if includes.include?('favorites')
+      hash['is_favorite'] = course.favorite_for_user?(subject_user) if includes.include?('favorites')
       if includes.include?('teachers')
         if course.teacher_count
           hash['teacher_count'] = course.teacher_count

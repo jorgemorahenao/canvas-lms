@@ -506,7 +506,6 @@ import 'compiled/behaviors/quiz_selectmenu'
       .delegate(":checkbox,:radio", 'change', function(event) {
         var $answer = $(this).parents(".answer");
         if (lastAnswerSelected == $answer[0]) {
-          $answer.find(":checkbox,:radio").blur();
           quizSubmission.updateSubmission();
         }
       })
@@ -755,7 +754,7 @@ import 'compiled/behaviors/quiz_selectmenu'
       $.flashError(I18n.t('login_failed', 'Login failed.'));
     });
 
-    showDeauthorizedDialog = _.bind(ldbLoginPopup.exec, ldbLoginPopup);
+    showDeauthorizedDialog = ldbLoginPopup.exec.bind(ldbLoginPopup);
   }
 
   $(function() {

@@ -46,6 +46,7 @@ module CanvasRails
     config.action_dispatch.rescue_responses['AuthenticationMethods::LoggedOutError'] = 401
     config.action_dispatch.default_headers['X-UA-Compatible'] = "IE=Edge,chrome=1"
     config.action_dispatch.default_headers.delete('X-Frame-Options')
+    config.action_dispatch.default_headers.delete('Referrer-Policy')
     config.action_controller.forgery_protection_origin_check = true
     ActiveSupport.to_time_preserves_timezone = true
 
@@ -110,6 +111,11 @@ module CanvasRails
     # havoc on the app (e.g. stylesheets/base -> ::Base)
     config.eager_load_paths -= %W(#{Rails.root}/app/coffeescripts
                                   #{Rails.root}/app/stylesheets)
+
+    config.middleware.use Rack::Chunked
+    config.middleware.use Rack::Deflater, if: -> (*) {
+      ::Canvas::DynamicSettings.find(tree: :private)["enable_rack_deflation"]
+    }
 
     # we don't know what middleware to make SessionsTimeout follow until after
     # we've loaded config/initializers/session_store.rb

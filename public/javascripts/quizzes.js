@@ -611,8 +611,10 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
             if (question.answerDecimalPoints || question.answer_tolerance) {
               var tolerance = parseFloatOrPercentage(question.answer_tolerance);
               tolerance = tolerance || Math.pow(0.1, question.answerDecimalPoints);
-              answerHtml = answerHtml + " <span style='font-size: 0.8em;'>+/-</span> " + htmlEscape(tolerance);
-              $question.find(".answer_tolerance").text(tolerance);
+              if (tolerance) {
+                answerHtml = answerHtml + " <span style='font-size: 0.8em;'>+/-</span> " + htmlEscape(formatFloatOrPercentage(tolerance));
+                $question.find(".answer_tolerance").text(formatFloatOrPercentage(tolerance));
+              }
             }
             $td.html(answerHtml);
             $tr.append($td);
@@ -765,7 +767,7 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
       }
       $formQuestion.find(".question_header").text(I18n.t('question_colon', "Question:"));
       $formQuestion.addClass(question_type);
-        $formQuestion.find(".question_points_holder").showIf(!$formQuestion.closest(".question_holder").hasClass('group') && question_type != 'text_only_question');
+      $formQuestion.find(".question_points_holder").showIf(!$formQuestion.closest(".question_holder").hasClass('group') && question_type !== 'text_only_question');
 
       var options = {
         addable: true
@@ -1007,7 +1009,7 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
     validateAnswerTolerance: function($input) {
       var val = $input.val();
       if (val == "") { return; }
-      $input.val( parseFloatOrPercentage(val) );
+      $input.val(formatFloatOrPercentage(parseFloatOrPercentage(val)));
     },
 
     defaultQuestionData: {
@@ -1452,11 +1454,13 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
             variable.value = numberHelper.parse($(this).text()) || 0;
             data.variables.push(variable);
           });
-          data.answer_text = numberHelper.parse($(this).find(".final_answer").text()) || 0;
+          var final_answer = $(this).find("td.final_answer").text().split('+/-')[0];
+          data.answer_text = numberHelper.parse(final_answer) || 0;
+
           question.answers.push(data);
         });
         question.formula_decimal_places = numberHelper.parse($question.find(".formula_decimal_places").text()) || 0;
-        question.answer_tolerance = parseFloatOrPercentage($question.find(".answer_tolerance").text()) || 0;
+        question.answer_tolerance = parseFloatOrPercentage($question.find(".answer_tolerance").text());
       }
       question.position = i;
       question.question_points = numberHelper.parse(question.question_points);
@@ -1563,19 +1567,24 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
     var result;
 
     // percentage value
-    if ((val + "").indexOf('%') === val.length - 1) {
-      var number = val.replace("%", "");
-      result = (Math.round(numberHelper.parse(number) * 10000.0) / 10000.0) + "%";
-
+    if ($.trim(val + "").indexOf('%') === val.length - 1) {
+      result = (Math.round(numberHelper.parse(val.replace("%", "")) * 10000.0) / 10000.0) + "%";
     // point value
-    } else if (!isNaN(val)) {
-      result = Math.round(numberHelper.parse(val) * 10000.0) / 10000.0;
-      if (isNaN(result)) { result = 0.0; }
-
     } else {
-      result = 0.0;
+      result = Math.round(numberHelper.parse(val) * 10000.0) / 10000.0;
     }
-    return result;
+    return result || 0;
+  }
+
+  function formatFloatOrPercentage(val) {
+    var valstr = val + "";
+    if (!val) {
+      return ""
+    } else if (valstr.indexOf('%') >= 0) {
+      return I18n.n(valstr.replace("%", "")) + "%";
+    } else {
+      return I18n.n(valstr);
+    }
   }
 
   function toggleConditionalReleaseTab(quizType) {
@@ -2176,7 +2185,7 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
           $form.find(".save_formula_button").click();
         }
         if (question.answer_tolerance) {
-          $form.find(".combination_answer_tolerance").val(I18n.n(question.answer_tolerance));
+          $form.find(".combination_answer_tolerance").val(formatFloatOrPercentage(question.answer_tolerance));
         }
         $form.find(".combination_count").val(question.answers.length);
         for(var idx in question.answers) {
@@ -2189,7 +2198,7 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
           }
           var html = I18n.n(question.answers[idx].answer_text);
           if (question.answer_tolerance) {
-            html = html + " <span style='font-size: 0.8em;'>+/-</span> " + htmlEscape(question.answer_tolerance);
+            html = html + " <span style='font-size: 0.8em;'>+/-</span> " + htmlEscape(formatFloatOrPercentage(question.answer_tolerance));
           }
           var $td = $("<td class='final_answer'/>");
           $td.html(html);
@@ -3018,7 +3027,7 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
           error_text = I18n.t('errors.no_possible_solution', "Please generate at least one possible solution");
         }
       } else if ($answers.length === 0 || $answers.filter(".correct_answer").length === 0) {
-        if ($answers.length === 0 && !_.contains(["essay_question", "file_upload_question", "text_only_question"], questionData.question_type)) {
+        if ($answers.length === 0 && !["essay_question", "file_upload_question", "text_only_question"].includes( questionData.question_type)) {
           error_text = I18n.t('errors.no_answer', "Please add at least one answer");
         } else if ($answers.filter(".correct_answer").length === 0 && (questionData.question_type == "multiple_choice_question" || questionData.question_type == "true_false_question" || questionData.question_tyep == "missing_word_question")) {
           error_text = I18n.t('errors.no_correct_answer', "Please choose a correct answer");
@@ -3128,7 +3137,10 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
         $question.find(".combinations tbody tr").each(function() {
           var data = {};
           data.variables = [];
-          data.answer = numberHelper.parse($(this).find("td.final_answer").text()) || 0;
+
+          var final_answer = $(this).find("td.final_answer").text().split('+/-')[0];
+          data.answer = numberHelper.parse(final_answer) || 0;
+
           $(this).find("td:not(.final_answer)").each(function(i) {
             var variable = {};
             variable.name = $.trim($ths.eq(i).text());
@@ -3229,6 +3241,8 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
         quiz.parseInput($el, 'float_long');
       } else if ($el.hasClass('precision')) {
         quiz.parseInput($el, 'precision', $el.siblings('.precision_value').val());
+      } else if ($el.hasClass('percentage')) {
+        quiz.validateAnswerTolerance($el);
       } else {
         quiz.parseInput($el, 'float');
       }
@@ -3243,14 +3257,6 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
       var $el = $(this);
       quiz.parseInputRange($el, 'int', 1, 16);
       $el.siblings('.float_value.precision').change();
-    });
-
-    $(document).delegate("input.combination_answer_tolerance", 'keydown', function(event) {
-      if (!event.metaKey && event.keyCode > 57 && event.keyCode < 91) {
-        event.preventDefault();
-      }
-    }).delegate('input.combination_answer_tolerance', 'change blur focus', function(event) {
-      quiz.validateAnswerTolerance($(this));
     });
 
     $("#questions").delegate('.question_teaser_link', 'click', function(event) {
@@ -3315,10 +3321,12 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
 
       // rewrite the data so that it fits the jsonapi format
       processData: function(data) {
-        var quizGroupQuestionPoints = data['quiz_group[question_points]'];
+        var quizGroupQuestionPoints = numberHelper.parse(data['quiz_group[question_points]']);
         if (quizGroupQuestionPoints && quizGroupQuestionPoints < 0) {
           $(this).find("input[name='quiz_group[question_points]']").errorBox(I18n.t('question.positive_points', "Must be zero or greater"));
           return false;
+        } else {
+          data['quiz_group[question_points]'] = quizGroupQuestionPoints;
         }
         var newData = {};
         _.each(data, function(val, key) {
@@ -3339,6 +3347,7 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
         var $group = $form.parents(".group_top");
         var groups = data.quiz_groups;
         var group = groups[0];
+        group.question_points = I18n.n(group.question_points);
         $form.loadingImage('remove');
         $group.removeClass('editing');
         $group.fillTemplateData({
@@ -4110,9 +4119,8 @@ const lockedItems = lockManager.isChildContent() ? lockManager.getItemLocks() : 
               var $td = $("<td/>");
               $td.addClass('final_answer');
               var html = htmlEscape(I18n.n(solution.rawValue()));
-              var tolerance = answer_tolerance;
-              if (tolerance) {
-                html += " <span style='font-size: 0.8em;'>+/-</span> " + htmlEscape(tolerance);
+              if (answer_tolerance) {
+                html += " <span style='font-size: 0.8em;'>+/-</span> " + htmlEscape(formatFloatOrPercentage(answer_tolerance));
               }
               $td.html(html);
               $result.append($td);

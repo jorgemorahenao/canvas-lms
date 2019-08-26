@@ -235,7 +235,7 @@ class SubmissionsApiController < ApplicationController
       student_ids = if value_to_boolean(params[:grouped])
                       # this provides one assignment object(and
                       # submission object within), per user group
-                      @assignment.representatives(@current_user).map(&:id)
+                      @assignment.representatives(user: @current_user).map(&:id)
                     else
                       @context.apply_enrollment_visibility(@context.student_enrollments,
                                                            @current_user, section_ids).
@@ -570,7 +570,7 @@ class SubmissionsApiController < ApplicationController
   #
   # Get a single submission, based on user id.
   #
-  # @argument include[] [String, "submission_history"|"submission_comments"|"rubric_assessment"|"visibility"|"course"|"user"]
+  # @argument include[] [String, "submission_history"|"submission_comments"|"rubric_assessment"|"full_rubric_assessment"|"visibility"|"course"|"user"]
   #   Associations to include with the group.
   def show
     @assignment = @context.assignments.active.find(params[:assignment_id])
@@ -1103,7 +1103,7 @@ class SubmissionsApiController < ApplicationController
     if authorized_action(@context, @current_user, [:manage_grades, :view_all_grades])
       @assignment = @context.assignments.active.find(params[:assignment_id])
       student_ids = if should_group?
-                      @assignment.representatives(@current_user).map(&:id)
+                      @assignment.representatives(user: @current_user).map(&:id)
                     else
                       student_scope = @context.students_visible_to(@current_user).
                         where("enrollments.type<>'StudentViewEnrollment' AND enrollments.workflow_state = 'active'").distinct

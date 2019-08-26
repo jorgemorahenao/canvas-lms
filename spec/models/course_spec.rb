@@ -252,6 +252,35 @@ describe Course do
     end
   end
 
+  describe "#filter_speed_grader_by_student_group?" do
+    before :once do
+      @course = Account.default.courses.create!
+      @course.root_account.enable_feature!(:new_gradebook)
+      @course.enable_feature!(:new_gradebook)
+      @course.root_account.enable_feature!(:filter_speed_grader_by_student_group)
+      @course.filter_speed_grader_by_student_group = true
+    end
+
+    it "returns true when new gradebook is enabled and the setting is on" do
+      expect(@course).to be_filter_speed_grader_by_student_group
+    end
+
+    it "returns false when setting is off" do
+      @course.filter_speed_grader_by_student_group = false
+      expect(@course).not_to be_filter_speed_grader_by_student_group
+    end
+
+    it "returns false when new gradebook is disabled" do
+      @course.disable_feature!(:new_gradebook)
+      expect(@course).not_to be_filter_speed_grader_by_student_group
+    end
+
+    it "returns false when the 'Filter SpeedGrader by Student Group' root account setting is off" do
+      @course.root_account.disable_feature!(:filter_speed_grader_by_student_group)
+      expect(@course).not_to be_filter_speed_grader_by_student_group
+    end
+  end
+
   describe "#recompute_student_scores" do
     it "should use all student ids except concluded and deleted if none are passed" do
       @course.save!
@@ -431,6 +460,18 @@ describe Course do
       expect(@course).not_to be_concluded
       expect(@course).to be_soft_concluded('StudentEnrollment')
       expect(@course).to be_concluded('StudentEnrollment')
+    end
+  end
+
+  describe 'allow_student_forum_attachments' do
+    it 'should default to true' do
+      expect(@course.allow_student_forum_attachments).to eq true
+    end
+
+    it 'should allow setting and getting' do
+      @course.allow_student_forum_attachments = false
+      @course.save!
+      expect(@course.allow_student_forum_attachments).to eq false
     end
   end
 

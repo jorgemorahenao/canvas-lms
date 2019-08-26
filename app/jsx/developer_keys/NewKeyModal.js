@@ -63,7 +63,8 @@ export default class DeveloperKeyModal extends React.Component {
 
   get toolConfiguration () {
     const public_jwk = this.developerKey.public_jwk ? { public_jwk: this.developerKey.public_jwk } : {}
-    return {...(this.developerKey.tool_configuration || {}), ...this.state.toolConfiguration, ...public_jwk}
+    const public_jwk_url = this.developerKey.public_jwk_url ? { public_jwk_url: this.developerKey.public_jwk_url } : {}
+    return {...(this.developerKey.tool_configuration || {}), ...this.state.toolConfiguration, ...public_jwk, ...public_jwk_url}
   }
 
   get isLtiKey() {
@@ -194,7 +195,11 @@ export default class DeveloperKeyModal extends React.Component {
         developer_key
       }
       if (this.isUrlConfig) {
-        if(!this.state.toolConfigurationUrl) { return }
+        if(!this.state.toolConfigurationUrl) {
+          $.flashError(I18n.t('A json url is required, please supply one.'))
+          this.setState({submitted: true})
+          return
+        }
         toSave.settings_url = this.state.toolConfigurationUrl
       } else {
         toSave.settings = settings

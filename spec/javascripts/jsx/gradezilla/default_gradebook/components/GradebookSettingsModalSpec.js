@@ -18,7 +18,7 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import {fireEvent, wait} from 'react-testing-library'
+import {fireEvent, wait} from '@testing-library/react'
 
 import GradebookSettingsModal from 'jsx/gradezilla/default_gradebook/components/GradebookSettingsModal'
 import * as GradebookSettingsModalApi from 'jsx/gradezilla/default_gradebook/apis/GradebookSettingsModalApi'
@@ -274,6 +274,16 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       component.close()
       await waitForModalClosed()
       notOk(getModalElement())
+    })
+
+    test('resets the selected post policy to the actual value', async () => {
+      props.postPolicies.setCoursePostPolicy({postManually: true})
+      await mountOpenLoadAndSelectTab('Grade Posting Policy')
+      getAutomaticallyPostGradesOption().click()
+      component.close()
+      await waitForModalClosed()
+      await mountOpenLoadAndSelectTab('Grade Posting Policy')
+      strictEqual(getManuallyPostGradesOption().checked, true)
     })
   })
 

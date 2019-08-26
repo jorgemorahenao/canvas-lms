@@ -373,6 +373,24 @@ describe "RCE next tests" do
       expect(assignment_unpublished_status).to be_displayed
     end
 
+    it "should click on a document in sidebar to display in body" do
+      title = "text_file.txt"
+      @root_folder = Folder.root_folders(@course).first
+      @text_file = @root_folder.attachments.create!(:filename => 'text_file.txt',
+                                                    :context => @course) { |a| a.content_type = 'text/plain' }
+
+      visit_front_page_edit(@course)
+
+      click_document_toolbar_button
+      click_course_documents
+
+      click_document_link(title)
+
+      in_frame tiny_rce_ifr_id do
+        expect(wiki_body_anchor.attribute('href')).to include course_file_id_path(@text_file)
+      end
+    end
+
     it "should display assignment due date in links accordion" do
       skip('Unskip in CORE-2619')
       title = "Assignment-Title"
@@ -448,6 +466,35 @@ describe "RCE next tests" do
       click_upload_media
 
       expect(upload_media_modal).to be_displayed
+    end
+
+    it "should open upload document modal when clicking upload option" do
+      skip('Causing flakiness - CORE-3186')
+      visit_front_page_edit(@course)
+
+      click_more_toolbar_button
+      click_document_toolbar_button
+      click_upload_document
+
+      expect(upload_document_modal).to be_displayed
+    end
+
+    it "should close sidebar after drag and drop" do
+      skip("kills many selenium tests. Address in CORE-3147")
+      title = "Assignment-Title"
+      @assignment = @course.assignments.create!(:name => title)
+
+      visit_front_page_edit(@course)
+
+      click_links_toolbar_button
+      click_course_links
+      click_assignments_accordion
+
+      source = course_item_link(title)
+      dest = f('iframe.tox-edit-area__iframe')
+      driver.action.drag_and_drop(source, dest).perform
+
+      expect(f('body')).not_to contain_css('[data-testid="CanvasContentTray"]')
     end
   end
 end

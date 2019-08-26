@@ -20,6 +20,8 @@ require 'atom'
 require 'anonymity'
 
 class Submission < ActiveRecord::Base
+  self.ignored_columns = %w{has_admin_comment has_rubric_assessment process_attempts}
+
   include Canvas::GradeValidations
   include CustomValidations
   include SendToStream
@@ -170,7 +172,10 @@ class Submission < ActiveRecord::Base
           -- submission is not submitted and
           AND submission_type IS NULL
           -- we expect a digital submission
-          and assignments.submission_types NOT IN ('', 'none', 'not_graded', 'on_paper', 'wiki_page', 'external_tool')
+          AND NOT (
+            cached_quiz_lti IS NOT TRUE AND
+            assignments.submission_types IN ('', 'none', 'not_graded', 'on_paper', 'wiki_page', 'external_tool')
+          )
           AND assignments.submission_types IS NOT NULL
         )
       )
@@ -380,7 +385,6 @@ class Submission < ActiveRecord::Base
       "updated_at",
       "posted_at",
       "processed",
-      "process_attempts",
       "grade_matches_current_submission",
       "published_score",
       "published_grade"
@@ -490,7 +494,7 @@ class Submission < ActiveRecord::Base
       type_can_peer_review = false
     end
     return plagData &&
-    (user_can_read_grade?(user, session) || (type_can_peer_review && user_can_peer_review_plagiarism?(user))) &&
+    (user_can_read_grade?(user, session, for_plagiarism: true) || (type_can_peer_review && user_can_peer_review_plagiarism?(user))) &&
     (assignment.context.grants_right?(user, session, :manage_grades) ||
       case settings[:originality_report_visibility]
        when 'immediate' then true
@@ -514,11 +518,10 @@ class Submission < ActiveRecord::Base
     }
   end
 
-  def user_can_read_grade?(user, session=nil)
+  def user_can_read_grade?(user, session=nil, for_plagiarism: false)
     # improves performance by checking permissions on the assignment before the submission
     return true if self.assignment.user_can_read_grades?(user, session)
-
-    return false if self.hide_grade_from_student?
+    return false if self.hide_grade_from_student?(for_plagiarism: for_plagiarism)
     return true if user && user.id == self.user_id # this is fast, so skip the policy cache check if possible
 
     self.grants_right?(user, session, :read_grade)
@@ -1349,7 +1352,6 @@ class Submission < ActiveRecord::Base
         score.to_s
     end
 
-    self.process_attempts ||= 0
     self.grade = nil if !self.score
     # I think the idea of having unpublished scores is unnecessarily confusing.
     # It may be that we want to have that functionality later on, but for now
@@ -1771,6 +1773,13 @@ class Submission < ActiveRecord::Base
         should_dispatch_submission_grade_changed?
     }
 
+    p.dispatch :assignment_unmuted
+    p.to { [student] + User.observing_students_in_course(student, assignment.context) }
+    p.whenever { |submission|
+      BroadcastPolicies::SubmissionPolicy.new(submission).
+        should_dispatch_assignment_unmuted?
+    }
+
   end
 
   def assignment_graded_in_the_last_hour?
@@ -1852,7 +1861,7 @@ class Submission < ActiveRecord::Base
   scope :include_submission_comments, -> { preload(:submission_comments) }
   scope :speed_grader_includes, -> { preload(:versions, :submission_comments, :attachments, :rubric_assessment) }
   scope :for_user, lambda { |user| where(:user_id => user) }
-  scope :needing_screenshot, -> { where("submissions.submission_type='online_url' AND submissions.attachment_id IS NULL AND submissions.process_attempts<3").order(:updated_at) }
+  scope :needing_screenshot, -> { where("submissions.submission_type='online_url' AND submissions.attachment_id IS NULL").order(:updated_at) }
 
   def assignment_visible_to_user?(user, opts={})
     return visible_to_user unless visible_to_user.nil?
@@ -2205,7 +2214,7 @@ class Submission < ActiveRecord::Base
       return false if submitted_at.present?
       return false unless past_due?
 
-      assignment.expects_submission?
+      cached_quiz_lti? || assignment.expects_submission?
     end
     alias missing missing?
 
@@ -2446,12 +2455,22 @@ class Submission < ActiveRecord::Base
     self.assignment.muted?
   end
 
-  def hide_grade_from_student?
-    return muted_assignment? unless PostPolicy.feature_enabled?
-    assignment.post_manually? ? posted_at.blank? : (graded? && !posted?)
+  def hide_grade_from_student?(for_plagiarism: false)
+    return muted_assignment? unless assignment.course.post_policies_enabled?
+    return false if for_plagiarism
+    if assignment.post_manually?
+      posted_at.blank?
+    else
+      # there must be a grade to hide otherwise we're incorrectly indicating
+      # that a grade is hidden when there isn't one present
+      graded? && !posted?
+    end
   end
 
   def posted?
+    # NOTE: This really should be a call to assignment.course.post_policies_enabled?
+    # but we're going to leave it the way it is for the next few months (until
+    # New Gradebook becomes universal) for fear of breaking even more things.
     if PostPolicy.feature_enabled?
       posted_at.present?
     else

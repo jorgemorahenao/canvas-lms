@@ -64,6 +64,10 @@ module RCENextPage
     f('#tinymce')
   end
 
+  def wiki_body_paragraph
+    f('#tinymce p')
+  end
+
   def wiki_body_anchor
     f('#tinymce p a')
   end
@@ -94,6 +98,10 @@ module RCENextPage
 
   def image_link(title)
     fj("[aria-label='Course Images'] button:contains('#{title}')")
+  end
+
+  def document_link(title)
+    fj("[aria-label='Course Documents'] [role='button']:contains('#{title}')")
   end
 
   def assignment_published_status
@@ -130,6 +138,10 @@ module RCENextPage
     possibly_hidden_toolbar_button('button[aria-label="Record/Upload Media"]')
   end
 
+  def document_toolbar_button
+    possibly_hidden_toolbar_button('button[aria-label="Documents"]')
+  end
+
   def course_images
     f('[role="menuitem"][title="Course Images"]')
   end
@@ -158,6 +170,18 @@ module RCENextPage
     f('[role="dialog"][aria-label="Upload Media"')
   end
 
+  def upload_document_button
+    f('[role="menuitem"][title="Upload Document"]')
+  end
+
+  def course_documents
+    f('[role="menuitem"][title="Course Documents"]')
+  end
+
+  def upload_document_modal
+    f('[role="dialog"][aria-label="Upload File"')
+  end
+
   def rce_page_body_ifr_id
     f('iframe.tox-edit-area__iframe')['id']
   end
@@ -171,11 +195,11 @@ module RCENextPage
   end
 
   def list_toggle_button
-    # put side arrow to switch list locator here
+    f('[role="button"][title="Ordered and Unordered Lists"] .tox-split-button__chevron')
   end
 
   def bullet_list_button
-    # put bullet list button locator here
+    f('[role="menuitemcheckbox"][title="default bulleted unordered list"]')
   end
 
   def numbered_list_button
@@ -226,6 +250,18 @@ module RCENextPage
     # put align right button locator here
   end
 
+  def directionality_button
+    f('[role="button"][title="directionality"]')
+  end
+
+  def directionality_toggle_button
+    f('[role="button"][title="directionality"] .tox-split-button__chevron')
+  end
+
+  def right_to_left_button
+    f('[role="menuitemcheckbox"][title="right to left"]')
+  end
+
   def formatting_dropdown
     f("button[aria-label='Blocks'")
   end
@@ -259,7 +295,7 @@ module RCENextPage
   end
 
   def tray_container
-    f('[data-cid="Tray Portal"]')
+    f('[data-cid="Tray"]')
   end
 
   def display_text_link_option
@@ -344,6 +380,10 @@ module RCENextPage
     image_link(title).click
   end
 
+  def click_document_link(title)
+    document_link(title).click
+  end
+
   def click_links_toolbar_button
     links_toolbar_button.click
   end
@@ -360,6 +400,10 @@ module RCENextPage
     media_toolbar_button.click
   end
 
+  def click_document_toolbar_button
+    document_toolbar_button.click
+  end
+
   def click_course_images
     course_images.click
     wait_for_ajaximations
@@ -372,6 +416,16 @@ module RCENextPage
 
   def click_upload_media
     upload_media_button.click
+    wait_for_ajaximations
+  end
+
+  def click_upload_document
+    upload_document_button.click
+    wait_for_ajaximations
+  end
+
+  def click_course_documents
+    course_documents.click
     wait_for_ajaximations
   end
 
@@ -429,6 +483,18 @@ module RCENextPage
 
   def click_align_right_button
     align_right_button.click
+  end
+
+  def click_directionality_button
+    directionality_button.click
+  end
+
+  def click_directionality_toggle_button
+    directionality_toggle_button.click
+  end
+
+  def click_right_to_left_option
+    right_to_left_button.click
   end
 
   def click_formatting_dropdown
