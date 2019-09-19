@@ -241,7 +241,7 @@ class Course < ActiveRecord::Base
   include StickySisFields
   are_sis_sticky :name, :course_code, :start_at, :conclude_at,
                  :restrict_enrollments_to_course_dates, :enrollment_term_id,
-                 :workflow_state, :account_id
+                 :workflow_state, :account_id, :grade_passback_setting
 
   include FeatureFlags
 
@@ -1003,7 +1003,7 @@ class Course < ActiveRecord::Base
             EnrollmentState.transaction do
               locked_ids = EnrollmentState.where(:enrollment_id => enrollment_info.map(&:id)).lock(:no_key_update).order(:enrollment_id).pluck(:enrollment_id)
               EnrollmentState.where(:enrollment_id => locked_ids).
-                update_all(["state = ?, state_is_current = ?, access_is_current = ?, lock_version = lock_version + 1", 'completed', true, false])
+                update_all(["state = ?, state_is_current = ?, access_is_current = ?, lock_version = lock_version + 1, updated_at = ?", 'completed', true, false, Time.now.utc])
             end
             EnrollmentState.send_later_if_production(:process_states_for_ids, enrollment_info.map(&:id)) # recalculate access
           end
@@ -1022,7 +1022,7 @@ class Course < ActiveRecord::Base
               EnrollmentState.transaction do
                 locked_ids = EnrollmentState.where(:enrollment_id => enrollment_info.map(&:id)).lock(:no_key_update).order(:enrollment_id).pluck(:enrollment_id)
                 EnrollmentState.where(:enrollment_id => locked_ids).
-                  update_all(["state = ?, state_is_current = ?, lock_version = lock_version + 1", 'deleted', true])
+                  update_all(["state = ?, state_is_current = ?, lock_version = lock_version + 1, updated_at = ?", 'deleted', true, Time.now.utc])
               end
             end
             User.send_later_if_production(:update_account_associations, user_ids)
@@ -1312,7 +1312,7 @@ class Course < ActiveRecord::Base
       SisBatchRollBackData.bulk_insert_roll_back_data(data) if data
       Enrollment.where(id: e_batch.map(&:id)).update_all(workflow_state: 'deleted', updated_at: Time.zone.now)
       EnrollmentState.where(:enrollment_id => e_batch.map(&:id)).
-        update_all(["state = ?, state_is_current = ?, lock_version = lock_version + 1", 'deleted', true])
+        update_all(["state = ?, state_is_current = ?, lock_version = lock_version + 1, updated_at = ?", 'deleted', true, Time.now.utc])
       User.touch_and_clear_cache_keys(user_ids, :enrollments)
       User.send_later_if_production(:update_account_associations, user_ids) if user_ids.any?
     end
@@ -1464,7 +1464,7 @@ class Course < ActiveRecord::Base
     # Active admins (Teacher/TA/Designer)
     given { |user| (self.available? || self.created? || self.claimed?) && user &&
       fetch_on_enrollments("has_active_admin_enrollment", user) { enrollments.for_user(user).of_admin_type.active_by_date.exists? } }
-    can :read_as_admin and can :read and can :manage and can :update and can :use_student_view and can :read_outcomes and can :view_unpublished_items and can :manage_feature_flags
+    can :read_as_admin and can :read and can :manage and can :update and can :use_student_view and can :read_outcomes and can :view_unpublished_items and can :manage_feature_flags and can :view_feature_flags
 
     # Teachers and Designers can delete/reset, but not TAs
     given { |user| !self.deleted? && !self.sis_source_id && user &&
@@ -1526,7 +1526,7 @@ class Course < ActiveRecord::Base
     can :read_as_admin and can :view_unpublished_items
 
     given { |user| self.account_membership_allows(user, :manage_courses) }
-    can :read_as_admin and can :manage and can :update and can :use_student_view and can :reset_content and can :view_unpublished_items and can :manage_feature_flags
+    can :read_as_admin and can :manage and can :update and can :use_student_view and can :reset_content and can :view_unpublished_items and can :manage_feature_flags and can :view_feature_flags
 
     given { |user| self.account_membership_allows(user, :manage_courses) && self.grants_right?(user, :change_course_state) }
     can :delete
@@ -2014,7 +2014,7 @@ class Course < ActiveRecord::Base
     limit_privileges_to_course_section = opts[:limit_privileges_to_course_section] || false
     associated_user_id = opts[:associated_user_id]
 
-    role = opts[:role] || Enrollment.get_built_in_role_for_type(type)
+    role = opts[:role] || self.shard.activate { Enrollment.get_built_in_role_for_type(type) }
 
     start_at = opts[:start_at]
     end_at = opts[:end_at]
@@ -2120,7 +2120,7 @@ class Course < ActiveRecord::Base
 
   def resubmission_for(asset)
     asset.ignores.where(:purpose => 'grading', :permanent => false).delete_all
-    instructors.touch_all
+    instructors.clear_cache_keys(:todo_list)
   end
 
   def grading_standard_enabled
@@ -2723,9 +2723,10 @@ class Course < ActiveRecord::Base
     return tab && tab[:hidden]
   end
 
-  def external_tool_tabs(opts)
+  def external_tool_tabs(opts, user)
     tools = self.context_external_tools.active.having_setting('course_navigation')
     tools += ContextExternalTool.active.having_setting('course_navigation').where(context_type: 'Account', context_id: account_chain_ids).to_a
+    tools = tools.select { |t| t.permission_given?(:course_navigation, user, self) }
     Lti::ExternalToolTab.new(self, :course_navigation, tools, opts[:language]).tabs
   end
 
@@ -2745,7 +2746,7 @@ class Course < ActiveRecord::Base
       tabs = self.tab_configuration.compact
       settings_tab = default_tabs[-1]
       external_tabs = if opts[:include_external]
-                        external_tool_tabs(opts) + Lti::MessageHandler.lti_apps_tabs(self, [Lti::ResourcePlacement::COURSE_NAVIGATION], opts)
+                        external_tool_tabs(opts, user) + Lti::MessageHandler.lti_apps_tabs(self, [Lti::ResourcePlacement::COURSE_NAVIGATION], opts)
                       else
                         []
                       end
@@ -3009,7 +3010,8 @@ class Course < ActiveRecord::Base
       new_course = Course.new
       keys_to_copy = Course.column_names - [
         :id, :created_at, :updated_at, :syllabus_body, :wiki_id, :default_view,
-        :tab_configuration, :lti_context_id, :workflow_state, :latest_outcome_import_id
+        :tab_configuration, :lti_context_id, :workflow_state, :latest_outcome_import_id,
+        :grading_standard_id
       ].map(&:to_s)
       self.attributes.each do |key, val|
         new_course.write_attribute(key, val) if keys_to_copy.include?(key)

@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-import {arrayOf, shape, string} from 'prop-types'
+import {arrayOf, bool, shape, string} from 'prop-types'
 import gql from 'graphql-tag'
 import {SubmissionDraftFile} from './File'
 
@@ -26,18 +26,24 @@ export const SubmissionDraft = {
       attachments {
         ...SubmissionDraftFile
       }
+      body
+      meetsAssignmentCriteria
     }
     ${SubmissionDraftFile.fragment}
   `,
 
   shape: shape({
     _id: string,
-    attachments: arrayOf(SubmissionDraftFile.shape)
+    attachments: arrayOf(SubmissionDraftFile.shape),
+    body: string,
+    meetsAssignmentCriteria: bool
   })
 }
 
 export const SubmissionDraftDefaultMocks = {
   SubmissionDraft: () => ({
-    attachments: () => []
+    attachments: () => [],
+    body: null,
+    meetsAssignmentCriteria: false
   })
 }

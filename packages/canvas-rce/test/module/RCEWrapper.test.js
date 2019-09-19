@@ -26,7 +26,7 @@ import RCEWrapper from "../../src/rce/RCEWrapper";
 
 const textareaId = "myUniqId";
 
-let React, fakeTinyMCE, execCommandSpy, editorCommandSpy, sd, editor;
+let React, fakeTinyMCE, editorCommandSpy, sd, editor;
 
 // ====================
 //        HELPERS
@@ -38,21 +38,35 @@ function requireReactDeps() {
 }
 
 function createBasicElement(opts) {
-  let props = Object.assign({ textareaId, tinymce: fakeTinyMCE }, opts);
+  if (opts && opts.textareaId) {
+    // so RCEWrapper.mceInstance() works
+    fakeTinyMCE.editors[0].id = opts.textareaId
+  }
+  const props = {textareaId, tinymce: fakeTinyMCE, ...trayProps(), ...opts};
   return new RCEWrapper(props);
 }
 
 function createdMountedElement(additionalProps = {}) {
-  let tree = sd.shallowRender(
+  const tree = sd.shallowRender(
     React.createElement(RCEWrapper, {
       defaultContent: "an example string",
-      textareaId: textareaId,
+      textareaId,
       tinymce: fakeTinyMCE,
       editorOptions: {},
+      ...trayProps(),
       ...additionalProps
     })
   );
   return tree;
+}
+
+function trayProps() {
+  return {
+    trayProps: {
+      contextType: 'course',
+      contextId: '17'
+    }
+  }
 }
 
 describe("RCEWrapper", () => {
@@ -95,7 +109,7 @@ describe("RCEWrapper", () => {
         }
       },
       insertContent: contentToInsert => {
-        editor.content = editor.content + contentToInsert;
+        editor.content += contentToInsert;
       },
       getContainer: () => {
         return {};
@@ -117,13 +131,11 @@ describe("RCEWrapper", () => {
       editors: [editor]
     };
 
-    execCommandSpy = sinon.spy(fakeTinyMCE, "execCommand");
     sinon.spy(editor, "insertContent");
   });
 
   afterEach(() => {
     jsdomify.destroy();
-    execCommandSpy.restore();
   });
 
   // ====================
@@ -136,7 +148,7 @@ describe("RCEWrapper", () => {
         const editor = {
           ui: { registry: { addIcon: () => {} } }
         };
-        const wrapper = new RCEWrapper({tinymce: fakeTinyMCE});
+        const wrapper = new RCEWrapper({tinymce: fakeTinyMCE, ...trayProps()});
         const options = wrapper.wrapOptions({});
         options.setup(editor);
         assert.equal(RCEWrapper.getByEditor(editor), wrapper);
@@ -163,7 +175,7 @@ describe("RCEWrapper", () => {
       element = createBasicElement({ textareaId: "myOtherUniqId" });
       element.focus();
       assert(
-        execCommandSpy.withArgs("mceFocus", false, "myOtherUniqId").called
+        editorCommandSpy.withArgs("mceFocus", false, "myOtherUniqId", undefined).called
       );
     });
 
@@ -237,7 +249,7 @@ describe("RCEWrapper", () => {
     });
 
     it("inserts links", () => {
-      let link = {};
+      const link = {};
       sinon.stub(contentInsertion, "insertLink");
       instance.insertLink(link);
       assert.ok(contentInsertion.insertLink.calledWith(editor, link));
@@ -379,7 +391,7 @@ describe("RCEWrapper", () => {
 
     describe("indicator", () => {
       it("does not indicate() if editor is hidden", () => {
-        let indicateDefaultStub = sinon.stub(indicateModule, "default");
+        const indicateDefaultStub = sinon.stub(indicateModule, "default");
         editor.hidden = true;
         sinon.stub(instance, "mceInstance");
         instance.mceInstance.returns(editor);
@@ -389,7 +401,7 @@ describe("RCEWrapper", () => {
       });
 
       it("waits until images are loaded to indicate", () => {
-        let image = { complete: false };
+        const image = { complete: false };
         sinon.spy(instance, "indicateEditor");
         sinon.stub(contentInsertion, "insertImage").returns(image);
         instance.insertImage(image);
@@ -402,7 +414,7 @@ describe("RCEWrapper", () => {
 
     describe("broken images", () => {
       it("calls checkImageLoadError when complete", () => {
-        let image = { complete: true };
+        const image = { complete: true };
         sinon.spy(instance, "checkImageLoadError");
         sinon.stub(contentInsertion, "insertImage").returns(image);
         instance.insertImage(image);
@@ -412,7 +424,7 @@ describe("RCEWrapper", () => {
       });
 
       it("sets an onerror handler when not complete", () => {
-        let image = { complete: false };
+        const image = { complete: false };
         sinon.spy(instance, "checkImageLoadError");
         sinon.stub(contentInsertion, "insertImage").returns(image);
         instance.insertImage(image);
@@ -653,4 +665,89 @@ describe("RCEWrapper", () => {
       });
     });
   });
+
+  describe('alert area', () => {
+
+    afterEach(() => {
+      jsdomify.destroy();
+    })
+
+    it('adds an alert and attaches an id when addAlert is called', () => {
+      const tree = createdMountedElement()
+      const rce = tree.getMountedInstance();
+      rce.resetAlertId()
+      rce.addAlert({
+        text: 'Something went wrong uploading, check your connection and try again.',
+        variant: 'error'
+      })
+      assert.ok(rce.state.messages[0].id === 0)
+      const alertArea = tree.dive(['AlertMessageArea'])
+      const alerts = alertArea.everySubTree('Alert')
+      assert.ok(alerts.length === 1)
+    })
+
+    it('adds multiple alerts', () => {
+      const tree = createdMountedElement()
+      const rce = tree.getMountedInstance();
+      rce.resetAlertId()
+      rce.addAlert({
+        text: 'Something went wrong uploading, check your connection and try again.',
+        variant: 'error'
+      })
+      rce.addAlert({
+        text: 'Something went wrong uploading 2, check your connection and try again.',
+        variant: 'error'
+      })
+      rce.addAlert({
+        text: 'Something went wrong uploading 3, check your connection and try again.',
+        variant: 'error'
+      })
+      const alertArea = tree.dive(['AlertMessageArea'])
+      const alerts = alertArea.everySubTree('Alert')
+      assert.ok(alerts.length === 3)
+    })
+
+    it('does not add alerts with the exact same text', () => {
+      const tree = createdMountedElement()
+      const rce = tree.getMountedInstance();
+      rce.resetAlertId()
+      rce.addAlert({
+        text: 'Something went wrong uploading, check your connection and try again.',
+        variant: 'error'
+      })
+      rce.addAlert({
+        text: 'Something went wrong uploading, check your connection and try again.',
+        variant: 'error'
+      })
+      rce.addAlert({
+        text: 'Something went wrong uploading, check your connection and try again.',
+        variant: 'error'
+      })
+      const alertArea = tree.dive(['AlertMessageArea'])
+      const alerts = alertArea.everySubTree('Alert')
+      assert.ok(alerts.length === 1)
+    })
+
+    it('removes an alert when removeAlert is called', () => {
+        const tree = createdMountedElement()
+        const rce = tree.getMountedInstance();
+        rce.resetAlertId()
+        rce.addAlert({
+          text: 'First',
+          variant: 'error'
+        })
+        rce.addAlert({
+          text: 'Second',
+          variant: 'error'
+        })
+        rce.addAlert({
+          text: 'Third',
+          variant: 'error'
+        })
+        rce.removeAlert(1)
+        const alertArea = tree.dive(['AlertMessageArea'])
+        const alerts = alertArea.everySubTree('Alert')
+        assert.ok(alerts.length === 2)
+    })
+  })
 });

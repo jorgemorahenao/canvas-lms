@@ -192,7 +192,7 @@ export function completeUpload(preflightResponse, file, options={}) {
  * @returns an array of attachment objects. The attachment objects contain ids
  * that a submissions comment can link to
  */
-export async function submissionCommentAttachmentsUpload(files, courseId, assignmentId) {
+export function submissionCommentAttachmentsUpload(files, courseId, assignmentId) {
   const preflightFileUploadUrl = `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self/comments/files`
   const uploadPromises = files.map(currentFile => {
     const preflightFileData = {
@@ -210,13 +210,34 @@ export async function submissionCommentAttachmentsUpload(files, courseId, assign
  *
  * @returns an array of attachment objects.
  */
-export async function uploadFiles(files, uploadUrl) {
-  const uploadPromises = files.map(currentFile => {
-    const preflightFileData = {
-      name: currentFile.name,
-      content_type: currentFile.type
+export function uploadFiles(files, uploadUrl) {
+  // We differentiate between a normal file and an lti content item
+  // based on the existence of a url attribute on the object. Then we invoke
+  // the uploadFile function with different parameters based on whether its a
+  // normal file or a content item backed by a file url. The parameters we are
+  // providing are determined by the file uploads api whose documentation can
+  // be found at /doc/api/file_uploads.md
+  const uploadPromises = files.map(file => {
+    if (file.url) {
+      return uploadFile(
+        uploadUrl,
+        {
+          url: file.url,
+          name: file.title,
+          content_type: file.mediaType,
+          submit_assignment: false
+        }
+      )
+    } else {
+      return uploadFile(
+        uploadUrl,
+        {
+          name: file.name,
+          content_type: file.type
+        },
+        file
+      )
     }
-    return uploadFile(uploadUrl, preflightFileData, currentFile)
   })
   return Promise.all(uploadPromises)
 }

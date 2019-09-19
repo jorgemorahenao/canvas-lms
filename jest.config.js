@@ -21,15 +21,15 @@ const {defaults} = require('jest-config')
 module.exports = {
   moduleNameMapper: {
     '^i18n!(.*$)': '<rootDir>/jest/i18nTransformer.js',
+    "\\.svg$": "<rootDir>/jest/imageMock.js",
     '^compiled/(.*)$': '<rootDir>/app/coffeescripts/$1',
     '^coffeescripts/(.*)$': '<rootDir>/app/coffeescripts/$1',
     '^jsx/(.*)$': '<rootDir>/app/jsx/$1',
     '^jst/(.*)$': '<rootDir>/app/views/jst/$1',
     "^timezone$": "<rootDir>/public/javascripts/timezone_core.js",
-    'node_modules-version-of-backbone': require.resolve('backbone'),
-    "\\.svg$": "<rootDir>/jest/imageMock.js"
+    'node_modules-version-of-backbone': require.resolve('backbone')
   },
-  roots: ['app/jsx', 'app/coffeescripts'],
+  roots: ['app/jsx', 'app/coffeescripts', 'public/javascripts'],
   moduleDirectories: [
     'node_modules',
     'public/javascripts',
@@ -45,7 +45,6 @@ module.exports = {
     '<rootDir>/jest/jest-setup.js'
   ],
   setupFilesAfterEnv: [
-    '@testing-library/react/cleanup-after-each',
     '@testing-library/jest-dom/extend-expect',
     './app/jsx/__tests__/ValidatedApolloCleanup'
   ],
@@ -57,6 +56,8 @@ module.exports = {
 
   moduleFileExtensions: [...defaults.moduleFileExtensions, 'coffee', 'handlebars'],
   restoreMocks: true,
+
+  testEnvironment: 'jest-environment-jsdom-fourteen',
 
   transform: {
     '^i18n': '<rootDir>/jest/i18nTransformer.js',

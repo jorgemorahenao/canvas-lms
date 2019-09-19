@@ -16,12 +16,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import htmlEscape from 'escape-html'
-
 import formatMessage from '../../../format-message'
 import bridge from '../../../bridge'
-import {getContentFromElement, IMAGE_EMBED_TYPE} from '../shared/ContentSelection'
-import {globalRegistry} from '../instructure-context-bindings/BindingRegistry'
+import {isImageEmbed} from '../shared/ContentSelection'
 import TrayController from './ImageOptionsTray/TrayController'
 import clickCallback from './clickCallback'
 
@@ -31,18 +28,14 @@ const trayController = new TrayController()
 
 tinymce.create('tinymce.plugins.InstructureImagePlugin', {
   init(editor) {
+    const contextType = editor.settings.canvas_rce_user_context.type
+
     // Register commands
     editor.addCommand('mceInstructureImage', clickCallback.bind(this, editor, document))
 
     // Register buttons
     editor.ui.registry.addMenuButton('instructure_image', {
-      tooltip: htmlEscape(
-        formatMessage({
-          default: 'Images',
-          description: 'Title for RCE button to embed an image'
-        })
-      ),
-
+      tooltip: formatMessage('Images'),
       icon: 'image',
 
       fetch(callback) {
@@ -55,7 +48,7 @@ tinymce.create('tinymce.plugins.InstructureImagePlugin', {
 
           {
             type: 'menuitem',
-            text: formatMessage('Course Images'), // This item needs to be adjusted to be user/context aware, i.e. User Images
+            text: contextType === 'user' ? formatMessage('My Images') : formatMessage('Course Images'),
             onAction() {
               editor.focus(true) // activate the editor without changing focus
               bridge.showTrayForPlugin(PLUGIN_KEY)
@@ -77,20 +70,9 @@ tinymce.create('tinymce.plugins.InstructureImagePlugin', {
         trayController.showTrayForEditor(editor)
       },
 
-      onSetup(/* buttonApi */) {
-        globalRegistry.bindToolbarToEditor(editor, buttonAriaLabel)
-      },
-
       text: formatMessage('Options'),
       tooltip: buttonAriaLabel
     })
-
-    const defaultFocusSelector = `.tox-pop__dialog button[aria-label="${buttonAriaLabel}"]`
-    globalRegistry.addContextKeydownListener(editor, defaultFocusSelector)
-
-    function isImageEmbed($el) {
-      return getContentFromElement($el).type === IMAGE_EMBED_TYPE
-    }
 
     editor.ui.registry.addContextToolbar('instructure-image-toolbar', {
       items: 'instructure-image-options',

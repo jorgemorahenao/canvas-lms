@@ -2465,6 +2465,10 @@ class ApplicationController < ActionController::Base
     ctx[:url] = request.url
     ctx[:producer] = 'canvas'
 
+    if @domain_root_account&.feature_enabled?(:compact_live_event_payloads)
+      ctx[:compact_live_events] = true
+    end
+
     StringifyIds.recursively_stringify_ids(ctx)
     LiveEvents.set_context(ctx)
   end
@@ -2531,7 +2535,14 @@ class ApplicationController < ActionController::Base
   end
 
   def can_stream_template?
-    Setting.get("disable_template_streaming_all", "false") != "true" &&
-      Setting.get("disable_template_streaming_for_#{controller_name}/#{action_name}", "false") != "true"
+    if ::Rails.env.test?
+      # don't actually stream because it kills selenium
+      # but still set the instance variable so we catch errors that we'd encounter streaming frd
+      @streaming_template = true
+      false
+    else
+      Setting.get("disable_template_streaming_all", "false") != "true" &&
+        Setting.get("disable_template_streaming_for_#{controller_name}/#{action_name}", "false") != "true"
+    end
   end
 end

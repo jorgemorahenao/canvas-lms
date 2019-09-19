@@ -17,7 +17,7 @@
  */
 
 import I18n from 'i18n!discussions_v2'
-import React, {Component} from 'react'
+import React, {Component, Suspense, lazy} from 'react'
 import {func, bool, string} from 'prop-types'
 import {connect} from 'react-redux'
 import {bindActionCreators} from 'redux'
@@ -29,6 +29,9 @@ import ScreenReaderContent from '@instructure/ui-a11y/lib/components/ScreenReade
 import Spinner from '@instructure/ui-elements/lib/components/Spinner'
 import Heading from '@instructure/ui-elements/lib/components/Heading'
 import Text from '@instructure/ui-elements/lib/components/Text'
+
+import CanvasTray from 'jsx/shared/components/CanvasTray'
+
 import {
   ConnectedDiscussionsContainer,
   DroppableConnectedDiscussionsContainer
@@ -49,6 +52,8 @@ import propTypes from '../propTypes'
 import actions from '../actions'
 import {reorderDiscussionsURL} from '../utils'
 
+const ManagedCourseSelector = lazy(() => import('jsx/shared/components/ManagedCourseSelector'))
+
 export default class DiscussionsIndex extends Component {
   static propTypes = {
     arrangePinnedDiscussions: func.isRequired,
@@ -57,11 +62,16 @@ export default class DiscussionsIndex extends Component {
     contextType: string.isRequired,
     deleteDiscussion: func.isRequired,
     getDiscussions: func.isRequired,
+    setCopyToOpen: func.isRequired,
+    setSendToOpen: func.isRequired,
     hasLoadedDiscussions: bool.isRequired,
     isLoadingDiscussions: bool.isRequired,
     permissions: propTypes.permissions.isRequired,
     pinnedDiscussions: discussionList.isRequired,
-    unpinnedDiscussions: discussionList.isRequired
+    unpinnedDiscussions: discussionList.isRequired,
+    copyToOpen: bool.isRequired,
+    sendToOpen: bool.isRequired,
+    DIRECT_SHARE_ENABLED: bool.isRequired
   }
 
   state = {
@@ -139,6 +149,7 @@ export default class DiscussionsIndex extends Component {
               title={I18n.t('Pinned Discussions')}
               discussions={this.props.pinnedDiscussions}
               deleteDiscussion={this.openDeleteDiscussionsModal}
+              pinned
               renderContainerBackground={() =>
                 pinnedDiscussionBackground({
                   permissions: this.props.permissions
@@ -206,7 +217,6 @@ export default class DiscussionsIndex extends Component {
             title={I18n.t('Discussions')}
             discussions={this.props.unpinnedDiscussions}
             deleteDiscussion={this.openDeleteDiscussionsModal}
-            pinned={false}
             closedState={false}
             renderContainerBackground={() =>
               unpinnedDiscussionsBackground({
@@ -222,7 +232,6 @@ export default class DiscussionsIndex extends Component {
             title={I18n.t('Closed for Comments')}
             discussions={this.props.closedForCommentsDiscussions}
             deleteDiscussion={this.openDeleteDiscussionsModal}
-            pinned={false}
             closedState
             renderContainerBackground={() =>
               closedDiscussionBackground({
@@ -237,6 +246,26 @@ export default class DiscussionsIndex extends Component {
             defaultOpen
             selectedCount={1}
           />
+        )}
+        {this.props.DIRECT_SHARE_ENABLED && (
+          <CanvasTray
+            open={this.props.copyToOpen}
+            label={I18n.t('Copy To...')}
+            onDismiss={() => this.props.setCopyToOpen(false)}
+          >
+            <Suspense fallback={<Spinner label={I18n.t('Loading...')} />}>
+              <ManagedCourseSelector />
+            </Suspense>
+          </CanvasTray>
+        )}
+        {this.props.DIRECT_SHARE_ENABLED && (
+          <CanvasTray
+            open={this.props.sendToOpen}
+            label={I18n.t('Send To...')}
+            onDismiss={() => this.props.setSendToOpen(false)}
+          >
+            TODO: Implement
+          </CanvasTray>
         )}{' '}
       </View>
     )
@@ -252,8 +281,8 @@ export default class DiscussionsIndex extends Component {
         {this.props.isLoadingDiscussions
           ? this.renderSpinner(I18n.t('Loading Discussions'))
           : this.props.permissions.moderate
-            ? this.renderTeacherView()
-            : this.renderStudentView()}
+          ? this.renderTeacherView()
+          : this.renderStudentView()}
       </div>
     )
   }
@@ -274,7 +303,10 @@ const connectState = (state, ownProps) => {
     contextType: state.contextType,
     permissions: state.permissions,
     pinnedDiscussions: pinnedDiscussionIds.map(id => allDiscussions[id]),
-    unpinnedDiscussions: unpinnedDiscussionIds.map(id => allDiscussions[id])
+    unpinnedDiscussions: unpinnedDiscussionIds.map(id => allDiscussions[id]),
+    copyToOpen: state.copyToOpen,
+    sendToOpen: state.sendToOpen,
+    DIRECT_SHARE_ENABLED: state.DIRECT_SHARE_ENABLED
   }
   return Object.assign({}, ownProps, fromPagination, fromState)
 }
@@ -284,7 +316,9 @@ const connectActions = dispatch =>
       'arrangePinnedDiscussions',
       'deleteDiscussion',
       'deleteFocusDone',
-      'getDiscussions'
+      'getDiscussions',
+      'setCopyToOpen',
+      'setSendToOpen'
     ]),
     dispatch
   )

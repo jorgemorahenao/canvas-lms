@@ -91,16 +91,21 @@ class SubmissionHistoriesQuery extends React.Component {
 
   render() {
     const submission = this.getSubmission()
+
+    // We have to use the newtork-only fetch policy here, because all the submissions
+    // share the same id which can cause previous query results to be cached in
+    // apollo and cause false-negatives for pagination.
     return (
       <Query
         query={SUBMISSION_HISTORIES_QUERY}
         variables={{submissionID: submission.id}}
         skip={!submission || this.state.skipLoadingHistories}
+        fetchPolicy="network-only"
       >
         {queryResults => {
           const {data, error, loading} = queryResults
           return (
-            <React.Fragment>
+            <>
               {error && (
                 <AssignmentAlert errorMessage={I18n.t('Failed to laod more submissions')} />
               )}
@@ -109,7 +114,7 @@ class SubmissionHistoriesQuery extends React.Component {
                 submissionHistoriesQueryData={loading ? null : data}
                 loadMoreSubmissionHistories={this.generateOnLoadMore(queryResults)}
               />
-            </React.Fragment>
+            </>
           )
         }}
       </Query>

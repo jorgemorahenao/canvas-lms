@@ -21,7 +21,10 @@ import ReactDOM from 'react-dom'
 import bridge from '../../../../../bridge'
 import {getContentFromEditor} from '../../../shared/ContentSelection'
 import LinkOptionsDialog from './index'
+
 export const CONTAINER_ID = 'instructure-link-options-tray-container'
+export const CREATE_LINK = 'create'
+export const EDIT_LINK = 'edit'
 export default class LinkOptionsDialogController {
   constructor() {
     this._editor = null
@@ -29,6 +32,7 @@ export default class LinkOptionsDialogController {
     this._shouldOpen = false
     this._renderId = 0
   }
+
   get $container() {
     let $container = document.getElementById(CONTAINER_ID)
     if ($container == null) {
@@ -38,34 +42,41 @@ export default class LinkOptionsDialogController {
     }
     return $container
   }
+
   get isOpen() {
     return this._isOpen
   }
+
   showDialogForEditor(editor, op) {
     this._editor = editor
     this._shouldOpen = true
     this._op = op
     this._renderDialog()
   }
+
   hideDialog() {
     this._dismissDialog()
   }
+
   _applyLinkOptions(linkOptions) {
     this._dismissDialog()
-    bridge.insertLink(linkOptions)
+    bridge.insertLink(linkOptions, false)
   }
+
   _dismissDialog = () => {
     this._shouldOpen = false
     this._renderDialog()
   }
+
   _hasClosed = () => {
     bridge.focusActiveEditor(false)
     this._isOpen = false
     this._editor.focus(false)
     this._editor = null
   }
+
   _renderDialog() {
-    const content = getContentFromEditor(this._editor)
+    const content = getContentFromEditor(this._editor, this._op === EDIT_LINK)
     if (this._shouldOpen) {
       /*
        * When the dialog is being opened again, it should be rendered fresh

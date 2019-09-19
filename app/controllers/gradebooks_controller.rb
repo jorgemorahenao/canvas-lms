@@ -65,6 +65,8 @@ class GradebooksController < ApplicationController
 
     js_bundle :grade_summary, :rubric_assessment
     css_bundle :grade_summary
+
+    @google_analytics_page_title = t("Grades for Student")
     render stream: can_stream_template?
   end
 
@@ -98,15 +100,20 @@ class GradebooksController < ApplicationController
       @presenter.assignment_stats
     end
 
-    submissions_json = @presenter.submissions.
-      select { |s| s.user_can_read_grade?(@current_user) }.
-      map do |s|
-      {
-        assignment_id: s.assignment_id,
-        score: s.score,
-        excused: s.excused?,
-        workflow_state: s.workflow_state,
+    submissions_json = @presenter.submissions.map do |submission|
+      json = {
+        assignment_id: submission.assignment_id
       }
+
+      if submission.user_can_read_grade?(@current_user)
+        json.merge!({
+          excused: submission.excused?,
+          score: submission.score,
+          workflow_state: submission.workflow_state
+        })
+      end
+
+      json
     end
 
     grading_period = @grading_periods && @grading_periods.find { |period| period[:id] == gp_id }
@@ -420,7 +427,7 @@ class GradebooksController < ApplicationController
         sections: sections_json(@context.active_course_sections, @current_user, session, [], allow_sis_ids: true),
         settings_update_url: api_v1_course_gradebook_settings_update_url(@context),
         settings: gradebook_settings.fetch(@context.id, {}),
-        student_groups: group_categories_json(@context.group_categories, @current_user, session, {include: ['groups']}),
+        student_groups: group_categories_json(@context.group_categories.active, @current_user, session, {include: ['groups']}),
         login_handle_name: @context.root_account.settings[:login_handle_name],
         sis_name: @context.root_account.settings[:sis_name],
         version: params.fetch(:version, nil),
@@ -653,6 +660,7 @@ class GradebooksController < ApplicationController
     respond_to do |format|
 
       format.html do
+        grading_role_for_user = grading_role(assignment: @assignment)
         rubric = @assignment&.rubric_association&.rubric
         @headers = false
         @outer_frame = true
@@ -666,7 +674,8 @@ class GradebooksController < ApplicationController
           new_gradebook_enabled: new_gradebook_enabled?,
           force_anonymous_grading: force_anonymous_grading?(@assignment),
           anonymous_identities: @assignment.anonymous_grader_identities_by_anonymous_id,
-          grading_role: grading_role(assignment: @assignment),
+          final_grader_id: @assignment.final_grader_id,
+          grading_role: grading_role_for_user,
           grading_type: @assignment.grading_type,
           lti_retrieve_url: retrieve_course_external_tools_url(
             @context.id, assignment_id: @assignment.id, display: 'borderless'
@@ -682,7 +691,7 @@ class GradebooksController < ApplicationController
           help_url: help_link_url,
           outcome_proficiency: outcome_proficiency,
         }
-        if grading_role(assignment: @assignment) == :moderator
+        if grading_role_for_user == :moderator
           env[:provisional_select_url] = api_v1_select_provisional_grade_path(@context.id, @assignment.id, "{{provisional_grade_id}}")
         end
 

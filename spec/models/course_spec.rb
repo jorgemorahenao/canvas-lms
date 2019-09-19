@@ -1120,6 +1120,8 @@ describe Course do
       @course.sis_source_id = 'sis_id'
       @course.lti_context_id = 'lti_context_id'
       @course.stuck_sis_fields = [].to_set
+      gs = @course.grading_standards.create!(:title => "Standard eh", :data => [["Eh", 0.93], ["Eff", 0]])
+      @course.grading_standard = gs
       profile = @course.profile
       profile.description = "description"
       profile.save!
@@ -1145,6 +1147,7 @@ describe Course do
       expect(@course.lti_context_id).not_to be_nil
 
       @new_course.reload
+      expect(@new_course.grading_standard).to be_nil
       expect(@new_course).to be_created
       expect(@new_course.course_sections).not_to be_empty
       expect(@new_course.students).to eq [@student]
@@ -3997,7 +4000,7 @@ describe Course, 'tabs_available' do
     expect(tool.course_navigation(:url)).to eq "http://www.example.com"
     expect(tool.has_placement?(:course_navigation)).to eq true
 
-    settings = @course.external_tool_tabs({}).first
+    settings = @course.external_tool_tabs({}, User.new).first
     expect(settings).to include(:visibility=>"members")
     expect(settings).to include(:hidden=>true)
   end
@@ -4012,7 +4015,7 @@ describe Course, 'tabs_available' do
     expect(tool.course_navigation(:url)).to eq "http://www.example.com"
     expect(tool.has_placement?(:course_navigation)).to eq true
 
-    settings = @course.external_tool_tabs({}).first
+    settings = @course.external_tool_tabs({}, User.new).first
     expect(settings).to include(:visibility=>"admins")
     expect(settings).to include(:hidden=>false)
   end
@@ -5703,7 +5706,7 @@ describe Course, "#show_total_grade_as_points?" do
   end
 
   context "cached_account_users_for" do
-    specs_require_cache(:redis_store)
+    specs_require_cache(:redis_cache_store)
 
     before :once do
       @course = Course.create!

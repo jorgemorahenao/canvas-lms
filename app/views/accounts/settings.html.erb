@@ -19,16 +19,22 @@
   js_bundle :account_settings
   css_bundle :account_settings, :reports, :tinymce
   provide :page_title, t(:page_title, "Account Settings")
-  if can_do(@context, @current_user, :manage_storage_quotas)
-    js_env :ACCOUNT => {
+
+  js_env(
+    :ACCOUNT => {
       'id' => @context.id,
-      'default_storage_quota_mb' => @context.default_storage_quota_mb,
-      'default_user_storage_quota_mb' => @context.default_user_storage_quota_mb,
-      'default_group_storage_quota_mb' => @context.default_group_storage_quota_mb,
       'site_admin' => @account.site_admin?,
       'root_account' => @account.root_account?
-    }
-  end
+    }.tap do |h|
+      if can_do(@context, @current_user, :manage_storage_quotas)
+        h.merge!(
+          'default_storage_quota_mb' => @context.default_storage_quota_mb,
+          'default_user_storage_quota_mb' => @context.default_user_storage_quota_mb,
+          'default_group_storage_quota_mb' => @context.default_group_storage_quota_mb
+        )
+      end
+    end
+  )
 %>
 <% provide :right_side do %>
   <%= render :partial => "additional_settings_right_side" %>
@@ -70,7 +76,7 @@
     <% if @context.root_account.settings[:enable_alerts] && can_do(@context, @current_user, :manage_interaction_alerts) %>
       <li><a href="#tab-alerts" id="tab-alerts-link"><%= t(:tab_alerts, "Alerts") %></a></li>
     <% end %>
-    <% if can_do(@context, @current_user, :manage_feature_flags) %>
+    <% if can_do(@context, @current_user, :view_feature_flags) %>
       <li><a href="#tab-features" id="tab-features-link">
         <% if @account.root_account.feature_enabled?(:new_features_ui) %>
           <%= t(:feature_preview, "Feature Preview") %>
@@ -322,7 +328,6 @@
         <% end %>
         <% if !@account.site_admin? && @account.root_account? && @account.grants_right?(@current_user, :manage_site_settings) %>
           <% TermsOfService.ensure_terms_for_account(@account) %>
-          <% js_env(:TERMS_OF_SERVICE_CUSTOM_CONTENT => @account.terms_of_service_content&.content) %>
           <% js_bundle :terms_of_service_modal%>
           <fieldset>
             <legend><%= t("Acceptable Use Policy") %></legend>
@@ -1147,7 +1152,7 @@ acknowledge that you have read and agreed to the
         <%= render :partial => 'alerts/alerts' %>
       </div>
   <% end %>
-  <% if can_do(@context, @current_user, :manage_feature_flags) %>
+  <% if can_do(@context, @current_user, :view_feature_flags) %>
     <div id="tab-features"></div>
   <% end %>
   <% if @account.root_account.feature_enabled?(:javascript_csp) && can_do(@context, @current_user, :manage_account_settings) && !@account.site_admin? %>

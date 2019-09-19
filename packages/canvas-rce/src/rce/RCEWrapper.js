@@ -19,10 +19,12 @@
 import PropTypes from "prop-types";
 import React from "react";
 import {Editor} from "@tinymce/tinymce-react";
+import uniqBy from 'lodash/uniqBy'
 
 import themeable from '@instructure/ui-themeable'
 import {IconKeyboardShortcutsLine} from '@instructure/ui-icons'
 import {ScreenReaderContent} from '@instructure/ui-a11y'
+import {Alert} from '@instructure/ui-alerts'
 
 import formatMessage from "../format-message";
 import * as contentInsertion from "./contentInsertion";
@@ -35,6 +37,9 @@ import ShowOnFocusButton from './ShowOnFocusButton'
 import theme from '../skins/theme'
 import {isImage} from './plugins/shared/fileTypeUtils'
 import KeyboardShortcutModal from './KeyboardShortcutModal'
+import AlertMessageArea from './AlertMessageArea'
+import alertHandler from './alertHandler'
+import {isFileLink, isImageEmbed} from './plugins/shared/ContentSelection'
 
 const ASYNC_FOCUS_TIMEOUT = 250
 
@@ -91,28 +96,25 @@ function focusFirstMenuButton(el) {
   $firstMenu && $firstMenu.focus()
 }
 
-function initKeyboardShortcuts(el, editor) {
-  // hide the menubar
-  showMenubar(el, false)
-
-  // when typed w/in the editor's edit area
-  editor.addShortcut('Alt+F9', '', () => {
-    showMenubar(el, true)
-  })
-  // when typed somewhere else w/in RCEWrapper
-  el.addEventListener('keyup', e => {
-    if (e.altKey && e.code === 'F9') {
-      showMenubar(el, true)
-    }
-  })
-
-  // toolbar help
-  el.addEventListener('keyup', e => {
-    if (e.altKey && e.code === 'F10') {
-      focusToolbar(el)
-    }
-  })
+function focusContextToolbar() {
+  const $focusable = document.querySelector('.tox-tinymce-aux .tox-toolbar button')
+  if ($focusable) {
+    $focusable.focus()
+  }
 }
+
+function isElementWithinTable(node) {
+  let elem = node
+  while(elem) {
+    if (elem.tagName === 'TABLE' || elem.tagName === 'TD' || elem.tagName === 'TH') {
+      return true
+    }
+    elem = elem.parentElement
+  }
+  return false
+}
+
+let alertIdValue = 0;
 
 @themeable(theme, styles)
 class RCEWrapper extends React.Component {
@@ -123,7 +125,7 @@ class RCEWrapper extends React.Component {
   static propTypes = {
     confirmFunc: PropTypes.func,
     defaultContent: PropTypes.string,
-    editorOptions: PropTypes.object,
+    editorOptions: PropTypes.object, // eslint-disable-line react/forbid-prop-types
     handleUnmount: PropTypes.func,
     language: PropTypes.string,
     onFocus: PropTypes.func,
@@ -131,7 +133,7 @@ class RCEWrapper extends React.Component {
     onRemove: PropTypes.func,
     textareaClassName: PropTypes.string,
     textareaId: PropTypes.string,
-    tinymce: PropTypes.object,
+    tinymce: PropTypes.object, // eslint-disable-line react/forbid-prop-types
     trayProps
   };
 
@@ -153,6 +155,7 @@ class RCEWrapper extends React.Component {
     this.indicator = false;
 
     this._elementRef = null;
+    this._showOnFocusButton = null;
 
     injectTinySkin()
 
@@ -161,8 +164,12 @@ class RCEWrapper extends React.Component {
       wordCount: 0,
       isHtmlView: false,
       KBShortcutModalOpen: false,
-      focused: false
+      focused: false,
+      messages: [],
+      announcement: null
     }
+
+    alertHandler.alertFunc = this.addAlert;
   }
 
   // getCode and setCode naming comes from tinyMCE
@@ -294,14 +301,14 @@ class RCEWrapper extends React.Component {
     return editors.filter(ed => ed.id === this.props.textareaId)[0];
   }
 
-  onTinyMCEInstance(command) {
-    if (command == "mceRemoveEditor") {
-      let editor = this.mceInstance();
-      if (editor) {
+  onTinyMCEInstance(command, args) {
+    const editor = this.mceInstance();
+    if (editor) {
+      if (command === "mceRemoveEditor") {
         editor.execCommand("mceNewDocument");
       } // makes sure content can't persist past removal
+      editor.execCommand(command, false, this.props.textareaId, args);
     }
-    this.props.tinymce.execCommand(command, false, this.props.textareaId);
   }
 
   destroy() {
@@ -376,11 +383,13 @@ class RCEWrapper extends React.Component {
   }
 
   contentTrayClosing = false
+
   handleContentTrayClosing = isClosing => {
     this.contentTrayClosing = isClosing
   }
 
   blurTimer = 0
+
   handleBlur(event) {
     if (this.blurTimer) return
 
@@ -401,9 +410,10 @@ class RCEWrapper extends React.Component {
           return
         }
 
-        if (document.activeElement.getAttribute('class').includes('tox-')) {
+        const activeClass = document.activeElement && document.activeElement.getAttribute('class')
+        if (activeClass && activeClass.includes('tox-')) {
           // if a toolbar button has focus, then the user clicks on the "more" button
-          // focus jumps to the body, then eventually to the popped pup toolbar. This
+          // focus jumps to the body, then eventually to the popped up toolbar. This
           // catches that case, but could also fail to blur an rce if the user clicked from
           // one rce on the page to another.  I think this is the lesser of the 2 evils
           return
@@ -452,7 +462,7 @@ class RCEWrapper extends React.Component {
     this.handleFocus()
   }
 
-  handleBlurEditor() {
+  handleBlurEditor(event) {
     const ifr = this.iframe
     ifr && ifr.parentElement.classList.remove('active')
     this.handleBlur(event)
@@ -467,9 +477,38 @@ class RCEWrapper extends React.Component {
     return this[methodName](...args);
   }
 
+  initKeyboardShortcuts(el, editor) {
+    // hide the menubar
+    showMenubar(el, false)
+
+    // when typed w/in the editor's edit area
+    editor.addShortcut('Alt+F9', '', () => {
+      showMenubar(el, true)
+    })
+    // when typed somewhere else w/in RCEWrapper
+    el.addEventListener('keydown', event => {
+      if (event.altKey && event.code === 'F9') {
+        event.preventDefault()
+        event.stopPropagation()
+        showMenubar(el, true)
+      }
+    })
+
+    // toolbar help
+    el.addEventListener('keydown', event => {
+      if (event.altKey && event.code === 'F10') {
+        event.preventDefault()
+        event.stopPropagation()
+        focusToolbar(el)
+      }
+    })
+
+    editor.on('keydown', this.handleShortcutKeyShortcut)
+  }
+
   onInit(_e, editor) {
     editor.rceWrapper = this;
-    initKeyboardShortcuts(this._elementRef, editor)
+    this.initKeyboardShortcuts(this._elementRef, editor)
     if(document.body.classList.contains('Underline-All-Links__enabled')) {
       this.iframe.contentDocument.body.classList.add('Underline-All-Links__enabled')
     }
@@ -481,9 +520,44 @@ class RCEWrapper extends React.Component {
     }
     // Probably should do this in tinymce.scss, but we only want it in new rce
     this.getTextarea().style.resize = 'none'
-    editor.on('KeyDown', this.handleShortcutKeyShortcut) // keyUp puts the char in the editor
-
     editor.on('Change', this.doAutoResize)
+
+    this.announceContextToolbars(editor)
+  }
+
+  announcing = 0
+
+  announceContextToolbars(editor) {
+    editor.on('NodeChange', () => {
+      const node = editor.selection.getNode()
+      if (isImageEmbed(node)) {
+        if (this.announcing !== 1) {
+          this.setState({
+            announcement: formatMessage('type Control F9 to access image options. {text}', {text: node.getAttribute('alt')})
+          })
+          this.announcing = 1
+        }
+      } else if(isFileLink(node)) {
+        if (this.announcing !== 2) {
+          this.setState({
+            announcement: formatMessage('type Control F9 to access link options. {text}', {text: node.textContent})
+          })
+          this.announcing = 2
+        }
+      } else if(isElementWithinTable(node)) {
+        if (this.announcing !== 3) {
+          this.setState({
+            announcement: formatMessage('type Control F9 to access table options. {text}', {text: node.textContent})
+          })
+          this.announcing = 3
+        }
+      } else {
+        this.setState({
+          announcement: null
+        })
+        this.announcing = 0
+      }
+    })
   }
 
   doAutoResize = (e) => {
@@ -516,19 +590,23 @@ class RCEWrapper extends React.Component {
   }
 
   onResize = (_e, coordinates) => {
-    const container = this.mceInstance().getContainer()
-    const currentContainerHeight = Number.parseInt(container.style.height, 10)
-    if (isNaN(currentContainerHeight)) return
-    const modifiedHeight = currentContainerHeight + coordinates.deltaY
-    const newHeight = `${modifiedHeight}px`
-    container.style.height = newHeight
-    this.getTextarea().style.height = newHeight
-    // play nice and send the same event that the silver theme would send
-    this.mceInstance().fire('ResizeEditor')
+    const editor = this.mceInstance()
+    if (editor) {
+      const container = editor.getContainer()
+      if (!container) return
+      const currentContainerHeight = Number.parseInt(container.style.height, 10)
+      if (isNaN(currentContainerHeight)) return // eslint-disable-line no-restricted-globals
+      const modifiedHeight = currentContainerHeight + coordinates.deltaY
+      const newHeight = `${modifiedHeight}px`
+      container.style.height = newHeight
+      this.getTextarea().style.height = newHeight
+      // play nice and send the same event that the silver theme would send
+      editor.fire('ResizeEditor')
+    }
   }
 
   onA11yChecker = () => {
-    this.onTinyMCEInstance('openAccessibilityChecker', {'data-canvas-component': true})
+    this.onTinyMCEInstance('openAccessibilityChecker', {skip_focus: true})
   }
 
   handleShortcutKeyShortcut = (event) => {
@@ -548,8 +626,10 @@ class RCEWrapper extends React.Component {
   }
 
   KBShortcutModalClosed = () => {
-    if(Bridge.activeEditor() === this) {
-      Bridge.focusActiveEditor(false)
+    // when the modal is opened from the showOnFocus button, focus doesn't
+    // get automatically returned to the button like it should.
+    if (this._showOnFocusButton && document.activeElement === document.body) {
+      this._showOnFocusButton.focus()
     }
   }
 
@@ -613,7 +693,9 @@ class RCEWrapper extends React.Component {
       // tiny's external link create/edit dialog config
       target_list: false,  // don't show the target list when creating/editing links
       link_title: false,   // don't show the title input when creating/editing links
-      default_link_target: '_blank'
+      default_link_target: '_blank',
+
+      canvas_rce_user_context: {type: this.props.trayProps.contextType, id: this.props.trayProps.contextId}
     }
   }
 
@@ -668,6 +750,33 @@ class RCEWrapper extends React.Component {
     }
   }
 
+  addAlert = alert => {
+    alert.id = alertIdValue++;
+    this.setState(state => {
+      let messages = state.messages.concat(alert);
+      messages = uniqBy(messages, 'text'); // Don't show the same message twice
+      return { messages };
+    });
+  };
+
+
+  removeAlert = (messageId) => {
+    this.setState(state => {
+      const messages = state.messages.filter(message => message.id !== messageId);
+      return { messages };
+    })
+  }
+
+  /**
+   * Used for reseting the value during tests
+   */
+  resetAlertId = () => {
+    if (this.state.messages.length > 0) {
+      throw new Error('There are messages currently, you cannot reset when they are non-zero')
+    }
+    alertIdValue = 0;
+  }
+
   render() {
     const {trayProps, ...mceProps} = this.props
     mceProps.editorOptions.statusbar = false
@@ -686,9 +795,11 @@ class RCEWrapper extends React.Component {
             icon: IconKeyboardShortcutsLine,
             margin: 'xx-small'
           }}
+          ref={el => this._showOnFocusButton = el}
         >
           {<ScreenReaderContent>{formatMessage('View keyboard shortcuts')}</ScreenReaderContent>}
         </ShowOnFocusButton>
+        <AlertMessageArea messages={this.state.messages} liveRegion={trayProps.liveRegion} afterDismiss={this.removeAlert} />
         <Editor
           id={mceProps.textareaId}
           textareaName={mceProps.name}
@@ -718,6 +829,12 @@ class RCEWrapper extends React.Component {
           onDismiss={this.closeKBShortcutModal}
           open={this.state.KBShortcutModalOpen}
         />
+        <Alert
+          screenReaderOnly
+          liveRegion={() => document.getElementById('flash_screenreader_holder')}
+          >
+          {this.state.announcement}
+        </Alert>
       </div>
     );
   }

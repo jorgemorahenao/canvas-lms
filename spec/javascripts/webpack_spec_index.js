@@ -21,6 +21,9 @@ import { canvas } from '@instructure/ui-themes/lib'
 import en_US from 'timezone/en_US'
 import './jsx/spec-support/specProtection'
 import setupRavenConsoleLoggingPlugin from '../../app/jsx/shared/helpers/setupRavenConsoleLoggingPlugin'
+import {filterUselessConsoleMessages} from '@instructure/js-utils'
+
+filterUselessConsoleMessages(console)
 
 Enzyme.configure({ adapter: new Adapter() })
 
@@ -29,6 +32,7 @@ if (process.env.SENTRY_DSN) {
   // "Script error"
   const Raven = require('raven-js')
   Raven.config(process.env.SENTRY_DSN, {
+    ignoreErrors: ['renderIntoDiv', 'renderSidebarIntoDiv'], // silence the `Cannot read property 'renderIntoDiv' of null` errors we get from the pre- rce_enhancements old rce code
     release: process.env.GIT_COMMIT
   }).install();
 
@@ -41,6 +45,7 @@ if (process.env.SENTRY_DSN) {
     // https://github.com/getsentry/sentry-javascript/blob/master/packages/raven-js/src/singleton.js#L33
     deprecationsReporter = new Raven.Client();
     deprecationsReporter.config(process.env.DEPRECATION_SENTRY_DSN, {
+      ignoreErrors: ['renderIntoDiv', 'renderSidebarIntoDiv'], // silence the `Cannot read property 'renderIntoDiv' of null` errors we get from the pre- rce_enhancements old rce code
       release: process.env.GIT_COMMIT
     });
 

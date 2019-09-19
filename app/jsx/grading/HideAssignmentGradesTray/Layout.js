@@ -16,7 +16,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import React, {Fragment} from 'react'
+import React from 'react'
 import {any, arrayOf, bool, shape, string} from 'prop-types'
 
 import Alert from '@instructure/ui-alerts/lib/components/Alert'
@@ -43,7 +43,7 @@ export default function Layout({
   const hasSections = sections.length > 0
 
   return (
-    <Fragment>
+    <>
       {!gradesPublished && (
         <Alert margin="x-small" variant="warning">
           {I18n.t(
@@ -61,7 +61,7 @@ export default function Layout({
       {gradesPublished && hasSections && anonymousGrading && (
         <Alert margin="x-small" variant="info">
           {I18n.t(
-            'Grades can only be hidden for everyone when the assignment is anonymous. Anonymity will be enabled.'
+            'When hiding grades for anonymous assignments, grades will be hidden for everyone in the course. Anonymity will be re-applied.'
           )}
         </Alert>
       )}
@@ -89,7 +89,7 @@ export default function Layout({
           selectedSectionIds={selectedSectionIds}
         />
       </FormFieldGroup>
-    </Fragment>
+    </>
   )
 }
 

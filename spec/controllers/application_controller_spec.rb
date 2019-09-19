@@ -1128,7 +1128,8 @@ describe ApplicationController do
         {
           uuid: 'account_uuid1',
           global_id: 'account_global1',
-          lti_guid: 'lti1'
+          lti_guid: 'lti1',
+          feature_enabled?: false
         }
       end
 
@@ -1506,11 +1507,10 @@ describe CoursesController do
           method: 'GET',
           path: '/api/v1/accounts'
         }))
-        params = double()
-        expect(params).to receive(:delete).with(:include)
-        expect(params).to receive(:delete).with(:includes)
+        params = { include: ['a'], includes: ['uuid', 'b']}
         allow(controller).to receive(:params).and_return(params)
         controller.send(:validate_scopes)
+        expect(params).to eq(include: [], includes: ['uuid'])
       end
     end
   end

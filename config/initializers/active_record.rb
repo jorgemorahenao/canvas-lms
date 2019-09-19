@@ -612,9 +612,11 @@ class ActiveRecord::Base
       rescue ActiveRecord::RecordNotUnique
       end
     end
-    result = transaction(:requires_new => true) { uncached { yield(retries) } }
-    connection.clear_query_cache
-    result
+    Shackles.activate(:master) do
+      result = transaction(:requires_new => true) { uncached { yield(retries) } }
+      connection.clear_query_cache
+      result
+    end
   end
 
   def self.current_xlog_location
@@ -1115,22 +1117,11 @@ module UpdateAndDeleteWithJoins
 
     sql = stmt.to_sql
 
-    if CANVAS_RAILS5_1
-      binds = bound_attributes.map(&:value_for_database)
-      binds.map! { |value| connection.quote(value) }
-      collector = Arel::Collectors::Bind.new
-      arel.join_sources.each do |node|
-        connection.visitor.accept(node, collector)
-      end
-      binds_in_join = collector.value.count { |x| x.is_a?(Arel::Nodes::BindParam) }
-      join_sql = collector.substitute_binds(binds).join
-    else
-      collector = connection.send(:collector)
-      arel.join_sources.each do |node|
-        connection.visitor.accept(node, collector)
-      end
-      join_sql = collector.value
+    collector = connection.send(:collector)
+    arel.join_sources.each do |node|
+      connection.visitor.accept(node, collector)
     end
+    join_sql = collector.value
 
     tables, join_conditions = deconstruct_joins(join_sql)
 
@@ -1144,22 +1135,11 @@ module UpdateAndDeleteWithJoins
     join_conditions.each { |join| scope = scope.where(join) }
 
     # skip any binds that are used in the join
-    if CANVAS_RAILS5_1
-      binds = scope.bound_attributes[binds_in_join..-1]
-      binds = binds.map(&:value_for_database)
-      binds.map! { |value| connection.quote(value) }
-      sql_string = Arel::Collectors::Bind.new
-      scope.arel.constraints.each do |node|
-        connection.visitor.accept(node, sql_string)
-      end
-      where_sql = sql_string.substitute_binds(binds).join
-    else
-      collector = connection.send(:collector)
-      scope.arel.constraints.each do |node|
-        connection.visitor.accept(node, collector)
-      end
-      where_sql = collector.value
+    collector = connection.send(:collector)
+    scope.arel.constraints.each do |node|
+      connection.visitor.accept(node, collector)
     end
+    where_sql = collector.value
     sql.concat('WHERE ' + where_sql)
     if ::Shackles.environment != db.shackles_environment
       Shard.current.database_server.unshackle {connection.update(sql, "#{name} Update")}
@@ -1183,25 +1163,14 @@ module UpdateAndDeleteWithJoins
     scope = self
     join_conditions.each { |join| scope = scope.where(join) }
 
-    if CANVAS_RAILS5_1
-      binds = scope.bound_attributes
-      binds = binds.map(&:value_for_database)
-      binds.map! { |value| connection.quote(value) }
-      sql_string = Arel::Collectors::Bind.new
-      scope.arel.constraints.each do |node|
-        connection.visitor.accept(node, sql_string)
-      end
-      where_sql = sql_string.substitute_binds(binds).join
-    else
-      collector = connection.send(:collector)
-      scope.arel.constraints.each do |node|
-        connection.visitor.accept(node, collector)
-      end
-      where_sql = collector.value
+    collector = connection.send(:collector)
+    scope.arel.constraints.each do |node|
+      connection.visitor.accept(node, collector)
     end
+    where_sql = collector.value
     sql.concat('WHERE ' + where_sql)
 
-    connection.delete(sql, "SQL", CANVAS_RAILS5_1 ? scope.bind_values : [])
+    connection.delete(sql, "SQL", [])
   end
 end
 ActiveRecord::Relation.prepend(UpdateAndDeleteWithJoins)
@@ -1479,7 +1448,13 @@ end
 
 module UnscopeCallbacks
   def run_callbacks(*args)
-    scope = self.class.all.klass.unscoped
+    unless CANVAS_RAILS5_2
+      # in rails 6.1, we can get rid of this entire monkeypatch
+      scope = self.class.current_scope&.clone || self.class.default_scoped
+      scope = scope.klass.unscoped
+    else
+      scope = self.class.all.klass.unscoped
+    end
     scope.scoping { super }
   end
 end
@@ -1572,11 +1547,7 @@ module DupArraysInMutationTracker
     change
   end
 end
-if CANVAS_RAILS5_1
-  ActiveRecord::AttributeMutationTracker.prepend(DupArraysInMutationTracker)
-else
-  ActiveModel::AttributeMutationTracker.prepend(DupArraysInMutationTracker)
-end
+ActiveModel::AttributeMutationTracker.prepend(DupArraysInMutationTracker)
 
 module IgnoreOutOfSequenceMigrationDates
   def current_migration_number(dirname)
@@ -1640,22 +1611,6 @@ module ExplainAnalyze
 end
 ActiveRecord::Relation.prepend(ExplainAnalyze)
 
-if CANVAS_RAILS5_1
-  ActiveRecord::AttributeMethods::Dirty.module_eval do
-    def emit_warning_if_needed(method_name, new_method_name)
-      unless mutation_tracker.equal?(mutations_from_database)
-        raise <<-EOW.squish
-                The behavior of `#{method_name}` inside of after callbacks will
-                be changing in the next version of Rails. The new return value will reflect the
-                behavior of calling the method after `save` returned (e.g. the opposite of what
-                it returns now). To maintain the current behavior, use `#{new_method_name}`
-                instead.
-        EOW
-      end
-    end
-  end
-end
-
 # fake Rails into grabbing correct column information for a table rename in-progress
 module TableRename
   RENAMES = { 'authentication_providers' => 'account_authorization_configs' }.freeze
@@ -1668,48 +1623,22 @@ module TableRename
   end
 end
 
-ActiveRecord::ConnectionAdapters::SchemaCache.prepend(TableRename)
-
-
-if CANVAS_RAILS5_1
-  module EnforceRawSqlWhitelist
-    COLUMN_NAME_ORDER_WHITELIST = /
-        \A
-        (?:\w+\.)?
-        \w+
-        (?:\s+asc|\s+desc)?
-        (?:\s+nulls\s+(?:first|last))?
-        \z
-      /ix
-
-    def enforce_raw_sql_whitelist(args, whitelist: COLUMN_NAME_WHITELIST) # :nodoc:
-      unexpected = args.reject do |arg|
-        arg.kind_of?(Arel::Node) ||
-          arg.is_a?(Arel::Nodes::SqlLiteral) ||
-          arg.is_a?(Arel::Attributes::Attribute) ||
-          arg.to_s.split(/\s*,\s*/).all? { |part| whitelist.match?(part) }
-      end
-
-      return if unexpected.none?
-
-      raise(
-            "Query method called with non-attribute argument(s): " +
-              unexpected.map(&:inspect).join(", ")
-      )
-    end
-
-    def validate_order_args(order_args)
-      enforce_raw_sql_whitelist(
-        order_args.flat_map { |a| a.is_a?(Hash) ? a.keys : a },
-        whitelist: COLUMN_NAME_ORDER_WHITELIST
-      )
-      super
-    end
+module DefeatInspectionFilterMarshalling
+  def inspect
+    result = super
+    @inspection_filter = nil
+    result
   end
 
-  ActiveRecord::Relation.prepend(EnforceRawSqlWhitelist)
+  def pretty_print(_pp)
+    super
+    @inspection_filter = nil
+  end
 end
 
+ActiveRecord::ConnectionAdapters::SchemaCache.prepend(TableRename)
+
+ActiveRecord::Base.prepend(DefeatInspectionFilterMarshalling)
 ActiveRecord::Base.prepend(Canvas::CacheRegister::ActiveRecord::Base)
 ActiveRecord::Base.singleton_class.prepend(Canvas::CacheRegister::ActiveRecord::Base::ClassMethods)
 ActiveRecord::Relation.prepend(Canvas::CacheRegister::ActiveRecord::Relation)

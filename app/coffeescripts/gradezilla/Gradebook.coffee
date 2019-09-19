@@ -42,7 +42,7 @@ import * as EnterGradesAsSetting from 'jsx/gradezilla/shared/EnterGradesAsSettin
 import SetDefaultGradeDialogManager from 'jsx/gradezilla/shared/SetDefaultGradeDialogManager'
 import CurveGradesDialogManager from 'jsx/gradezilla/default_gradebook/CurveGradesDialogManager'
 import GradebookApi from 'jsx/gradezilla/default_gradebook/apis/GradebookApi'
-import * as SubmissionCommentApi from 'jsx/gradezilla/default_gradebook/apis/SubmissionCommentApi'
+import SubmissionCommentApi from 'jsx/gradezilla/default_gradebook/apis/SubmissionCommentApi'
 import CourseSettings from 'jsx/gradezilla/default_gradebook/CourseSettings'
 import FinalGradeOverrides from 'jsx/gradezilla/default_gradebook/FinalGradeOverrides'
 import GradebookGrid from 'jsx/gradezilla/default_gradebook/GradebookGrid'
@@ -53,10 +53,11 @@ import PostPolicies from 'jsx/gradezilla/default_gradebook/PostPolicies'
 import GradebookMenu from 'jsx/gradezilla/default_gradebook/components/GradebookMenu'
 import ViewOptionsMenu from 'jsx/gradezilla/default_gradebook/components/ViewOptionsMenu'
 import ActionMenu from 'jsx/gradezilla/default_gradebook/components/ActionMenu'
-import AssignmentGroupFilter from 'jsx/gradezilla/default_gradebook/components/AssignmentGroupFilter'
-import GradingPeriodFilter from 'jsx/gradezilla/default_gradebook/components/GradingPeriodFilter'
-import ModuleFilter from 'jsx/gradezilla/default_gradebook/components/ModuleFilter'
-import SectionFilter from 'jsx/gradezilla/default_gradebook/components/SectionFilter'
+import AssignmentGroupFilter from 'jsx/gradezilla/default_gradebook/components/content-filters/AssignmentGroupFilter'
+import GradingPeriodFilter from 'jsx/gradezilla/default_gradebook/components/content-filters/GradingPeriodFilter'
+import ModuleFilter from 'jsx/gradezilla/default_gradebook/components/content-filters/ModuleFilter'
+import SectionFilter from 'jsx/gradezilla/default_gradebook/components/content-filters/SectionFilter'
+import StudentGroupFilter from 'jsx/gradezilla/default_gradebook/components/content-filters/StudentGroupFilter'
 import GridColor from 'jsx/gradezilla/default_gradebook/components/GridColor'
 import StatusesModal from 'jsx/gradezilla/default_gradebook/components/StatusesModal'
 import SubmissionTray from 'jsx/gradezilla/default_gradebook/components/SubmissionTray'
@@ -78,7 +79,6 @@ import {isHidden} from 'jsx/grading/helpers/SubmissionHelper'
 import LatePolicyApplicator from 'jsx/grading/LatePolicyApplicator'
 import Button from '@instructure/ui-buttons/lib/components/Button'
 import IconSettingsSolid from '@instructure/ui-icons/lib/Solid/IconSettings'
-import StudentGroupFilter from 'jsx/gradezilla/default_gradebook/components/StudentGroupFilter'
 import * as FlashAlert from 'jsx/shared/FlashAlert'
 import 'jquery.ajaxJSON'
 import 'jquery.instructure_date_and_time'
@@ -1150,19 +1150,16 @@ export default do ->
       mountPoint = document.getElementById('sections-filter-container')
 
       if @showSections() and 'sections' in @gridDisplaySettings.selectedViewOptionsFilters
-        sectionList = @sectionList()
         props =
-          items: sectionList
+          sections: @sectionList()
           onSelect: @updateCurrentSection
-          selectedItemId: @getFilterRowsBySetting('sectionId') || '0'
+          selectedSectionId: @getFilterRowsBySetting('sectionId') || '0'
           disabled: !@contentLoadStates.studentsLoaded
 
-        @sectionFilterMenu = renderComponent(SectionFilter, mountPoint, props)
-      else
+        renderComponent(SectionFilter, mountPoint, props)
+      else if mountPoint?
         @updateCurrentSection(null)
-        if @sectionFilterMenu
-          ReactDOM.unmountComponentAtNode(mountPoint)
-          @sectionFilterMenu = null
+        ReactDOM.unmountComponentAtNode(mountPoint)
 
     updateCurrentSection: (sectionId) =>
       sectionId = if sectionId == '0' then null else sectionId
@@ -1185,20 +1182,18 @@ export default do ->
       mountPoint = document.getElementById('student-group-filter-container')
 
       if @showStudentGroups() and 'studentGroups' in @gridDisplaySettings.selectedViewOptionsFilters
-        groupCategoryList = Object.values(@studentGroupCategories).sort((a, b) => (a.id - b.id))
+        studentGroupSets = Object.values(@studentGroupCategories).sort((a, b) => (a.id - b.id))
 
         props =
-          items: formatStudentGroupsForFilter(groupCategoryList)
+          studentGroupSets: studentGroupSets
           onSelect: @updateCurrentStudentGroup
-          selectedItemId: @getStudentGroupToShow()
+          selectedStudentGroupId: @getStudentGroupToShow()
           disabled: !@contentLoadStates.studentsLoaded
 
-        @studentGroupFilterMenu = renderComponent(StudentGroupFilter, mountPoint, props)
-      else
+        renderComponent(StudentGroupFilter, mountPoint, props)
+      else if mountPoint?
         @updateCurrentStudentGroup(null)
-        if @studentGroupFilterMenu
-          ReactDOM.unmountComponentAtNode(mountPoint)
-          @studentGroupFilterMenu = null
+        ReactDOM.unmountComponentAtNode(mountPoint)
 
     getStudentGroupToShow: () =>
       groupId = @getFilterRowsBySetting('studentGroupId') || '0'
@@ -1224,16 +1219,15 @@ export default do ->
 
       if groups.length > 1 and 'assignmentGroups' in @gridDisplaySettings.selectedViewOptionsFilters
         props =
-          items: groups
+          assignmentGroups: groups
+          disabled: false
           onSelect: @updateCurrentAssignmentGroup
-          selectedItemId: @getAssignmentGroupToShow()
+          selectedAssignmentGroupId: @getAssignmentGroupToShow()
 
-        @assignmentGroupFilterMenu = renderComponent(AssignmentGroupFilter, mountPoint, props)
-      else
+        renderComponent(AssignmentGroupFilter, mountPoint, props)
+      else if mountPoint?
         @updateCurrentAssignmentGroup(null)
-        if @assignmentGroupFilterMenu?
-          ReactDOM.unmountComponentAtNode(mountPoint)
-          @assignmentGroupFilterMenu = null
+        ReactDOM.unmountComponentAtNode(mountPoint)
 
     updateCurrentAssignmentGroup: (group) =>
       if @getFilterColumnsBySetting('assignmentGroupId') != group
@@ -1252,16 +1246,15 @@ export default do ->
 
       if @gradingPeriodSet? and 'gradingPeriods' in @gridDisplaySettings.selectedViewOptionsFilters
         props =
-          items: @gradingPeriodList().map((item) => { id: item.id, name: item.title })
+          disabled: false
+          gradingPeriods: @gradingPeriodList()
           onSelect: @updateCurrentGradingPeriod
-          selectedItemId: @getGradingPeriodToShow()
+          selectedGradingPeriodId: @getGradingPeriodToShow()
 
-        @gradingPeriodFilterMenu = renderComponent(GradingPeriodFilter, mountPoint, props)
-      else
+        renderComponent(GradingPeriodFilter, mountPoint, props)
+      else if mountPoint?
         @updateCurrentGradingPeriod(null)
-        if @gradingPeriodFilterMenu?
-          ReactDOM.unmountComponentAtNode(mountPoint)
-          @gradingPeriodFilterMenu = null
+        ReactDOM.unmountComponentAtNode(mountPoint)
 
     updateCurrentGradingPeriod: (period) =>
       if @getFilterColumnsBySetting('gradingPeriodId') != period
@@ -1290,16 +1283,15 @@ export default do ->
 
       if @listContextModules()?.length > 0 and 'modules' in @gridDisplaySettings.selectedViewOptionsFilters
         props =
-          items: @moduleList()
+          disabled: false
+          modules: @moduleList()
           onSelect: @updateCurrentModule
-          selectedItemId: @getFilterColumnsBySetting('contextModuleId') || '0'
+          selectedModuleId: @getFilterColumnsBySetting('contextModuleId') || '0'
 
-        @moduleFilterMenu = renderComponent(ModuleFilter, mountPoint, props)
-      else
+        renderComponent(ModuleFilter, mountPoint, props)
+      else if mountPoint?
         @updateCurrentModule(null)
-        if @moduleFilterMenu?
-          ReactDOM.unmountComponentAtNode(mountPoint)
-          @moduleFilterMenu = null
+        ReactDOM.unmountComponentAtNode(mountPoint)
 
     initSubmissionStateMap: =>
       @submissionStateMap = new SubmissionStateMap
@@ -2376,7 +2368,7 @@ export default do ->
       onRequestClose: @closeSubmissionTray
       pendingGradeInfo: @getPendingGradeInfo({ assignmentId, userId: studentId })
       postPoliciesEnabled: @options.post_policies_enabled
-      requireStudentGroupForSpeedGrader: @requireStudentGroupForSpeedGrader()
+      requireStudentGroupForSpeedGrader: @requireStudentGroupForSpeedGrader(assignment)
       selectNextAssignment: => @loadTrayAssignment('next')
       selectPreviousAssignment: => @loadTrayAssignment('previous')
       selectNextStudent: => @loadTrayStudent('next')
@@ -2466,7 +2458,11 @@ export default do ->
 
     apiCreateSubmissionComment: (comment) =>
       { assignmentId, studentId } = @getSubmissionTrayState()
-      SubmissionCommentApi.createSubmissionComment(@options.context_id, assignmentId, studentId, comment)
+      assignment = @getAssignment(assignmentId)
+      groupComment = if assignmentHelper.gradeByGroup(assignment) then 1 else 0
+      commentData = {group_comment: groupComment, text_comment: comment}
+
+      SubmissionCommentApi.createSubmissionComment(@options.context_id, assignmentId, studentId, commentData)
         .then(@updateSubmissionComments)
         .then(FlashAlert.showFlashSuccess I18n.t 'Successfully posted the comment')
         .catch(=> @setCommentsUpdating(false))
@@ -3050,7 +3046,10 @@ export default do ->
       # React throws an error if we try to unmount while the event is being handled
       @delayedCall 0, => ReactDOM.unmountComponentAtNode(anonymousSpeedGraderAlertMountPoint())
 
-    requireStudentGroupForSpeedGrader: =>
+    requireStudentGroupForSpeedGrader: (assignment) =>
+      # Assignments that grade by group (not by student) don't require a group selection
+      return false if assignmentHelper.gradeByGroup(assignment)
+
       @options.course_settings.filter_speed_grader_by_student_group && @getStudentGroupToShow() == '0'
 
     destroy: =>

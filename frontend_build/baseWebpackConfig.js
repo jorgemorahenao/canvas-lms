@@ -27,7 +27,7 @@ const TerserPlugin = require('terser-webpack-plugin')
 const MomentTimezoneDataPlugin = require('moment-timezone-data-webpack-plugin')
 const path = require('path')
 const webpack = require('webpack')
-const CleanWebpackPlugin = require('clean-webpack-plugin')
+const {CleanWebpackPlugin} = require('clean-webpack-plugin')
 const StatsWriterPlugin = require('webpack-stats-plugin').StatsWriterPlugin
 const BundleExtensionsPlugin = require('./BundleExtensionsPlugin')
 const ClientAppsPlugin = require('./clientAppPlugin')
@@ -163,6 +163,13 @@ module.exports = {
   resolve: {
     alias: {
       d3: 'd3/d3',
+
+      // this is to make instUI themeable work with real es `class`es
+      // it is a change that was backported and is fixed in instUI 6
+      // the file is the same as the on published to npm but we added a
+      // `require('newless')` to make it work
+      '@instructure/ui-themeable/lib$': path.resolve(__dirname, '../app/jsx/@instructure/ui-themeable/lib/themeable.js'),
+
       'node_modules-version-of-backbone': require.resolve('backbone'),
       'node_modules-version-of-react-modal': require.resolve('react-modal'),
 

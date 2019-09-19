@@ -152,10 +152,11 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       .returns(updateCourseSettingsPromise.promise)
   })
 
-  suiteHooks.afterEach(async () => {
-    await ensureModalIsClosed()
-    ReactDOM.unmountComponentAtNode($container)
-    $container.remove()
+  suiteHooks.afterEach(() => {
+    return ensureModalIsClosed().then(() => {
+      ReactDOM.unmountComponentAtNode($container)
+      $container.remove()
+    })
   })
 
   function mountComponent() {
@@ -169,9 +170,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     return document.querySelector('[role="dialog"][aria-label="Gradebook Settings"]')
   }
 
-  async function openModal() {
+  function openModal() {
     component.open()
-    await wait(() => {
+    return wait(() => {
       if (props.onEntered.callCount > 0) {
         return
       }
@@ -179,24 +180,25 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
   }
 
-  async function mountAndOpen() {
+  function mountAndOpen() {
     mountComponent()
-    await openModal()
+    return openModal()
   }
 
-  async function mountOpenAndLoad() {
-    await mountAndOpen()
-    fetchLatePolicyPromise.resolve()
-    await wait(() => !getSpinner())
+  function mountOpenAndLoad() {
+    return mountAndOpen()
+      .then(() => fetchLatePolicyPromise.resolve())
+      .then(() => wait(() => !getSpinner()))
   }
 
-  async function mountOpenLoadAndSelectTab(tabLabel) {
-    await mountOpenAndLoad()
-    findTab(tabLabel).click()
+  function mountOpenLoadAndSelectTab(tabLabel) {
+    return mountOpenAndLoad().then(() => {
+      findTab(tabLabel).click()
+    })
   }
 
-  async function waitForModalClosed() {
-    await wait(() => {
+  function waitForModalClosed() {
+    return wait(() => {
       if (props.onClose.callCount > 0) {
         return
       }
@@ -204,10 +206,12 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
   }
 
-  async function ensureModalIsClosed() {
+  function ensureModalIsClosed() {
     if (getModalElement()) {
       component.close()
-      await waitForModalClosed()
+      return  waitForModalClosed()
+    } else {
+      return Promise.resolve()
     }
   }
 
@@ -439,11 +443,12 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       })
 
       QUnit.module('when a late policy change is invalid', contextHooks => {
-        contextHooks.beforeEach(async () => {
-          await mountOpenAndLoad()
-          getAutomaticallyApplyMissingCheckbox().click()
-          const $input = getModalElement().querySelector('#missing-submission-grade')
-          fireEvent.change($input, {target: {value: '-1'}})
+        contextHooks.beforeEach(() => {
+          return mountOpenAndLoad().then(() => {
+            getAutomaticallyApplyMissingCheckbox().click()
+            const $input = getModalElement().querySelector('#missing-submission-grade')
+            fireEvent.change($input, {target: {value: '-1'}})
+          })
         })
 
         test('does not attempt to create the late policy', () => {
@@ -469,12 +474,13 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
   })
 
   QUnit.module('when creating a new late policy', hooks => {
-    hooks.beforeEach(async () => {
+    hooks.beforeEach(() => {
       sandbox.spy(FlashAlert, 'showFlashAlert')
 
-      await mountOpenAndLoad()
-      getAutomaticallyApplyMissingCheckbox().click()
-      getUpdateButton().click()
+      return mountOpenAndLoad().then(() => {
+        getAutomaticallyApplyMissingCheckbox().click()
+        getUpdateButton().click()
+      })
     })
 
     hooks.afterEach(() => {
@@ -487,9 +493,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request succeeds', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         createLatePolicyPromise.resolve()
-        await waitForModalClosed()
+        return waitForModalClosed()
       })
 
       test('displays a flash alert', () => {
@@ -507,9 +513,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request fails', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         createLatePolicyPromise.reject(new Error('request failed'))
-        await wait(() => FlashAlert.showFlashAlert.callCount > 0)
+        return wait(() => FlashAlert.showFlashAlert.callCount > 0)
       })
 
       test('displays a flash alert', () => {
@@ -528,13 +534,14 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
   })
 
   QUnit.module('when updating the late policy', hooks => {
-    hooks.beforeEach(async () => {
+    hooks.beforeEach(() => {
       sandbox.spy(FlashAlert, 'showFlashAlert')
 
       fetchedLatePolicy = existingLatePolicy
-      await mountOpenAndLoad()
-      getAutomaticallyApplyMissingCheckbox().click()
-      getUpdateButton().click()
+      return mountOpenAndLoad().then(() => {
+        getAutomaticallyApplyMissingCheckbox().click()
+        getUpdateButton().click()
+      })
     })
 
     hooks.afterEach(() => {
@@ -547,9 +554,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request succeeds', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         updateLatePolicyPromise.resolve()
-        await waitForModalClosed()
+        return waitForModalClosed()
       })
 
       test('displays a flash alert', () => {
@@ -567,9 +574,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request fails', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         updateLatePolicyPromise.reject(new Error('request failed'))
-        await wait(() => FlashAlert.showFlashAlert.callCount > 0)
+        return wait(() => FlashAlert.showFlashAlert.callCount > 0)
       })
 
       test('displays a flash alert', () => {
@@ -588,14 +595,15 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
   })
 
   QUnit.module('when updating the course post policy', hooks => {
-    hooks.beforeEach(async () => {
+    hooks.beforeEach(() => {
       sandbox.spy(FlashAlert, 'showFlashAlert')
       sandbox.spy(props.postPolicies, 'setCoursePostPolicy')
       sandbox.spy(props.postPolicies, 'setAssignmentPostPolicies')
 
-      await mountOpenLoadAndSelectTab('Grade Posting Policy')
-      getManuallyPostGradesOption().click()
-      getUpdateButton().click()
+      return mountOpenLoadAndSelectTab('Grade Posting Policy').then(() => {
+        getManuallyPostGradesOption().click()
+        getUpdateButton().click()
+      })
     })
 
     hooks.afterEach(() => {
@@ -621,16 +629,16 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       })
 
       QUnit.module('when getAssignmentPostPolicies succeeds', assignmentSuccessHooks => {
-        assignmentSuccessHooks.beforeEach(async () => {
+        assignmentSuccessHooks.beforeEach(() => {
           getAssignmentPostPoliciesPromise.resolve()
-          await waitForModalClosed()
+          return waitForModalClosed()
         })
 
-        test('displays a flash alert', async () => {
+        test('displays a flash alert', () => {
           strictEqual(FlashAlert.showFlashAlert.callCount, 1)
         })
 
-        test('uses the "success" type for the flash alert', async () => {
+        test('uses the "success" type for the flash alert', () => {
           const [{type}] = FlashAlert.showFlashAlert.lastCall.args
           equal(type, 'success')
         })
@@ -661,9 +669,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
       })
 
       QUnit.module('when getAssignmentPostPolicies fails', assignmentFailureHooks => {
-        assignmentFailureHooks.beforeEach(async () => {
+        assignmentFailureHooks.beforeEach(() => {
           getAssignmentPostPoliciesPromise.reject()
-          await wait(() => FlashAlert.showFlashAlert.callCount > 0)
+          return wait(() => FlashAlert.showFlashAlert.callCount > 0)
         })
 
         test('shows an "error" flash alert', () => {
@@ -674,9 +682,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request fails', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         setCoursePostPolicyPromise.reject(new Error('request failed'))
-        await wait(() => FlashAlert.showFlashAlert.callCount > 0)
+        return wait(() => FlashAlert.showFlashAlert.callCount > 0)
       })
 
       test('displays a flash alert', () => {
@@ -699,12 +707,13 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
   })
 
   QUnit.module('when updating advanced settings', hooks => {
-    hooks.beforeEach(async () => {
+    hooks.beforeEach(() => {
       sandbox.spy(FlashAlert, 'showFlashAlert')
 
-      await mountOpenLoadAndSelectTab('Advanced')
-      getAllowFinalGradeOverrideCheckbox().click()
-      getUpdateButton().click()
+      return mountOpenLoadAndSelectTab('Advanced').then(() => {
+        getAllowFinalGradeOverrideCheckbox().click()
+        getUpdateButton().click()
+      })
     })
 
     hooks.afterEach(() => {
@@ -717,9 +726,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request succeeds', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         updateCourseSettingsPromise.resolve()
-        await waitForModalClosed()
+        return waitForModalClosed()
       })
 
       test('displays a flash alert', () => {
@@ -746,9 +755,9 @@ QUnit.module('GradebookSettingsModal', suiteHooks => {
     })
 
     QUnit.module('when the request fails', contextHooks => {
-      contextHooks.beforeEach(async () => {
+      contextHooks.beforeEach(() => {
         updateCourseSettingsPromise.reject(new Error('request failed'))
-        await wait(() => FlashAlert.showFlashAlert.callCount > 0)
+        return wait(() => FlashAlert.showFlashAlert.callCount > 0)
       })
 
       test('displays a flash alert', () => {

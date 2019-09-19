@@ -19,15 +19,13 @@
 import formatMessage from "../../../format-message"
 import clickCallback from "./clickCallback"
 import bridge from '../../../bridge'
-import {globalRegistry} from '../instructure-context-bindings/BindingRegistry'
-import {getContentFromElement, FILE_LINK_TYPE} from '../shared/ContentSelection'
+import {isFileLink} from '../shared/ContentSelection'
 import LinkOptionsTrayController from './components/LinkOptionsTray/LinkOptionsTrayController'
+import {CREATE_LINK, EDIT_LINK} from './components/LinkOptionsDialog/LinkOptionsDialogController'
 
 const trayController = new LinkOptionsTrayController()
 
 const PLUGIN_KEY = 'links'
-const CREATE_LINK = 'create'
-const EDIT_LINK = 'edit'
 
 const getLink = function (editor, elm) {
   return editor.dom.getParent(elm, 'a[href]');
@@ -103,7 +101,7 @@ tinymce.create("tinymce.plugins.InstructureLinksPlugin", {
         }
         callback(items)
       },
-      onSetup: function(api) {
+      onSetup(api) {
         function handleNodeChange(e) {
           api.setActive(!!getAnchorElement(ed, e.element))
         }
@@ -124,23 +122,14 @@ tinymce.create("tinymce.plugins.InstructureLinksPlugin", {
         trayController.showTrayForEditor(ed)
       },
 
-      onSetup(/* buttonApi */) {
-        globalRegistry.bindToolbarToEditor(ed, buttonAriaLabel)
-      },
-
       text: formatMessage('Options'),
       tooltip: buttonAriaLabel
     })
 
-    const defaultFocusSelector = `.tox-pop__dialog button[aria-label="${buttonAriaLabel}"]`
-    globalRegistry.addContextKeydownListener(ed, defaultFocusSelector)
-
-    const isFileLink = ($element) => getContentFromElement($element, ed).type === FILE_LINK_TYPE
-
     ed.ui.registry.addContextToolbar('instructure-link-toolbar', {
       items: 'instructure-link-options',
       position: 'node',
-      predicate: isFileLink,
+      predicate: (elem) => isFileLink(elem, ed),
       scope: 'node'
     })
   }

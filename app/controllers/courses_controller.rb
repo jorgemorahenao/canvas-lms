@@ -145,6 +145,11 @@ require 'securerandom'
 #            "example": 25,
 #            "type": "integer"
 #         },
+#         "grade_passback_setting": {
+#            "description": "the grade_passback_setting set on the course",
+#            "example": "nightly_sync",
+#            "type": "string"
+#         },
 #         "created_at": {
 #           "description": "the date the course was created.",
 #           "example": "2012-05-01T00:00:00-06:00",
@@ -490,7 +495,7 @@ class CoursesController < ApplicationController
   end
 
   def load_enrollments_for_index
-    all_enrollments = @current_user.enrollments.not_deleted.shard(@current_user).preload(:enrollment_state, :course, :course_section).to_a
+    all_enrollments = @current_user.enrollments.not_deleted.shard(@current_user.in_region_associated_shards).preload(:enrollment_state, :course, :course_section).to_a
     @past_enrollments = []
     @current_enrollments = []
     @future_enrollments = []
@@ -723,6 +728,9 @@ class CoursesController < ApplicationController
   # @argument course[grading_standard_id] [Integer]
   #   The grading standard id to set for the course.  If no value is provided for this argument the current grading_standard will be un-set from this course.
   #
+  # @argument course[grade_passback_setting] [String]
+  #   Optional. The grade_passback_setting for the course. Only 'nightly_sync' and '' are allowed
+  #
   # @argument course[course_format] [String]
   #   Optional. Specifies the format of the course. (Should be 'on_campus', 'online', or 'blended')
   #
@@ -739,6 +747,12 @@ class CoursesController < ApplicationController
       if params_for_create.has_key?(:syllabus_body)
         params_for_create[:syllabus_body] = process_incoming_html_content(params_for_create[:syllabus_body])
       end
+
+     if params_for_create.key?(:grade_passback_setting)
+       grade_passback_setting = params_for_create.delete(:grade_passback_setting)
+       return unless authorized_action?(@course, @current_user, :manage_grades)
+       update_grade_passback_setting(grade_passback_setting)
+     end
 
       if (sub_account_id = params[:course].delete(:account_id)) && sub_account_id.to_i != @account.id
         @sub_account = @account.find_child(sub_account_id)
@@ -1285,6 +1299,7 @@ class CoursesController < ApplicationController
           :manage_admin_users => @context.grants_right?(@current_user, session, :manage_admin_users),
           :manage_account_settings => @context.account.grants_right?(@current_user, session, :manage_account_settings),
           :create_tool_manually => @context.grants_right?(@current_user, session, :create_tool_manually),
+          :manage_feature_flags => @context.grants_right?(@current_user, session, :manage_feature_flags)
         },
         APP_CENTER: {
           enabled: Canvas::Plugin.find(:app_center).enabled?
@@ -1293,7 +1308,6 @@ class CoursesController < ApplicationController
         EXTERNAL_TOOLS_CREATE_URL: url_for(controller: :external_tools, action: :create, course_id: @context.id),
         TOOL_CONFIGURATION_SHOW_URL: course_show_tool_configuration_url(course_id: @context.id, developer_key_id: ':developer_key_id'),
         MEMBERSHIP_SERVICE_FEATURE_FLAG_ENABLED: @context.root_account.feature_enabled?(:membership_service_for_lti_tools),
-        LTI_13_TOOLS_FEATURE_FLAG_ENABLED: @context.root_account.feature_enabled?(:lti_1_3),
         CONTEXT_BASE_URL: "/courses/#{@context.id}",
         PUBLISHING_ENABLED: @publishing_enabled,
         COURSE_IMAGES_ENABLED: @context.feature_enabled?(:course_card_images),
@@ -1866,6 +1880,7 @@ class CoursesController < ApplicationController
           add_crumb(t('#crumbs.modules', "Modules"))
           load_modules
         when 'syllabus'
+          set_active_tab "syllabus"
           rce_js_env
           add_crumb(t('#crumbs.syllabus', "Syllabus"))
           @groups = @context.assignment_groups.active.order(
@@ -1923,6 +1938,9 @@ class CoursesController < ApplicationController
         elsif @context.available?
           content_for_head helpers.auto_discovery_link_tag(:atom, feeds_course_format_path(@context.feed_code, :atom), {:title => t("Course Atom Feed")})
         end
+
+        set_active_tab "home" unless get_active_tab
+        render stream: can_stream_template?
       elsif @context.indexed && @context.available?
         render :description
       else
@@ -2199,7 +2217,10 @@ class CoursesController < ApplicationController
       @course.save!
       @course.enroll_user(@current_user, 'TeacherEnrollment', :enrollment_state => 'active')
 
-      @content_migration = @course.content_migrations.build(:user => @current_user, :source_course => @context, :context => @course, :migration_type => 'course_copy_importer', :initiated_source => api_request? ? :api : :manual)
+      @content_migration = @course.content_migrations.build(
+        :user => @current_user, :source_course => @context,
+        :context => @course, :migration_type => 'course_copy_importer',
+        :initiated_source => api_request? ? (in_app? ? :api_in_app : :api) : :manual)
       @content_migration.migration_settings[:source_course_id] = @context.id
       @content_migration.workflow_state = 'created'
       if (adjust_dates = params[:adjust_dates]) && Canvas::Plugin.value_to_boolean(adjust_dates[:enabled])
@@ -2351,6 +2372,9 @@ class CoursesController < ApplicationController
   # @argument course[grading_standard_id] [Integer]
   #   The grading standard id to set for the course.  If no value is provided for this argument the current grading_standard will be un-set from this course.
   #
+  # @argument course[grade_passback_setting] [String]
+  #   Optional. The grade_passback_setting for the course. Only 'nightly_sync' and '' are allowed
+  #
   # @argument course[course_format] [String]
   #   Optional. Specifies the format of the course. (Should be either 'on_campus' or 'online')
   #
@@ -2482,6 +2506,13 @@ class CoursesController < ApplicationController
           end
         end
       end
+
+      if params_for_update.has_key?(:grade_passback_setting)
+        grade_passback_setting = params_for_update.delete(:grade_passback_setting)
+        return unless authorized_action?(@course, @current_user, :manage_grades)
+        update_grade_passback_setting(grade_passback_setting)
+      end
+
       unless @course.account.grants_right? @current_user, session, :manage_storage_quotas
         params_for_update.delete :storage_quota
         params_for_update.delete :storage_quota_mb
@@ -3186,6 +3217,13 @@ class CoursesController < ApplicationController
 
   private
 
+  def update_grade_passback_setting(grade_passback_setting)
+    unless grade_passback_setting.blank? || grade_passback_setting == 'nightly_sync'
+      @course.errors.add(:grade_passback_setting, t("Invalid grade_passback_setting"))
+    end
+    @course.grade_passback_setting = grade_passback_setting.presence
+  end
+
   def active_group_memberships(users)
     @active_group_memberships ||= GroupMembership.active_for_context_and_users(@context, users).group_by(&:user_id)
   end
@@ -3197,7 +3235,7 @@ class CoursesController < ApplicationController
   def course_params
     return {} unless params[:course]
     params[:course].permit(:name, :group_weighting_scheme, :start_at, :conclude_at,
-      :grading_standard_id, :is_public, :is_public_to_auth_users, :allow_student_wiki_edits, :show_public_context_messages,
+      :grading_standard_id, :grade_passback_setting, :is_public, :is_public_to_auth_users, :allow_student_wiki_edits, :show_public_context_messages,
       :syllabus_body, :public_description, :allow_student_forum_attachments, :allow_student_discussion_topics, :allow_student_discussion_editing,
       :show_total_grade_as_points, :default_wiki_editing_roles, :allow_student_organized_groups, :course_code, :default_view,
       :open_enrollment, :allow_wiki_comments, :turnitin_comments, :self_enrollment, :license, :indexed,

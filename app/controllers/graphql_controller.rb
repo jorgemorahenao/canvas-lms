@@ -18,7 +18,7 @@
 
 # pre-build the graphql schema (which is expensive and slow) so that the first
 # request is not slow and terrible
-CanvasSchema.execute("{}")
+CanvasSchema.graphql_definition
 
 class GraphQLController < ApplicationController
   include Api::V1

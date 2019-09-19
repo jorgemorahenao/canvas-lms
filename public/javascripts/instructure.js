@@ -29,7 +29,7 @@ import './instructure_helper'
 import 'jqueryui/draggable'
 import './jquery.ajaxJSON'
 import './jquery.doc_previews' /* filePreviewsEnabled, loadDocPreview */
-import './jquery.google-analytics' /* trackEvent */
+import {trackEvent} from 'jquery.google-analytics'
 import './jquery.instructure_date_and_time' /* datetimeString, dateString, fudgeDateForProfileTimezone */
 import './jquery.instructure_forms' /* formSubmit, fillFormData, formErrors */
 import 'jqueryui/dialog'
@@ -89,16 +89,16 @@ function handleYoutubeLink () {
       $video.find(".hide_youtube_embed_link").click(preventDefault(() => {
         $video.remove()
         $after.show()
-        $.trackEvent('hide_embedded_content', 'hide_you_tube')
+        trackEvent('hide_embedded_content', 'hide_you_tube')
       }))
       $(this).after($video).hide()
     }))
-    $.trackEvent('show_embedded_content', 'show_you_tube')
+    trackEvent('show_embedded_content', 'show_you_tube')
     $link.addClass('youtubed').after($after)
   }
 }
 
-  $.trackEvent('Route', location.pathname.replace(/\/$/, '').replace(/\d+/g, '--') || '/');
+  trackEvent('Route', location.pathname.replace(/\/$/, '').replace(/\d+/g, '--') || '/');
 
 
   var JQUERY_UI_WIDGETS_WE_TRY_TO_ENHANCE = '.dialog, .draggable, .resizable, .sortable, .tabs';
@@ -108,11 +108,11 @@ function handleYoutubeLink () {
     $(".user_content.unenhanced:visible")
       .each(function() {
         var $this = $(this);
-        $this.find("img").css('maxWidth', '100%');
+        $this.find("img").css('maxWidth', Math.min($content.width(), $this.width()));
         $this.data('unenhanced_content_html', $this.html());
       })
       .find(".enhanceable_content").show()
-        .filter(JQUERY_UI_WIDGETS_WE_TRY_TO_ENHANCE).ifExists(function($elements){
+        .filter(JQUERY_UI_WIDGETS_WE_TRY_TO_ENHANCE).ifExists($elements => {
           var msg =
             "Deprecated use of magic jQueryUI widget markup detected:\n\n" +
             "You're relying on undocumented functionality where Canvas makes " +
@@ -128,7 +128,7 @@ function handleYoutubeLink () {
         .filter(".dialog").each(function(){
           var $dialog = $(this);
           $dialog.hide();
-          $dialog.closest(".user_content").find("a[href='#" + $dialog.attr('id') + "']").click(function(event) {
+          $dialog.closest(".user_content").find("a[href='#" + $dialog.attr('id') + "']").click(event => {
             event.preventDefault();
             $dialog.dialog();
           });
@@ -176,7 +176,7 @@ function handleYoutubeLink () {
       .not(".youtubed").each(handleYoutubeLink);
     $(".user_content.unenhanced").removeClass('unenhanced').addClass('enhanced');
 
-    setTimeout(function() {
+    setTimeout(() => {
       $(".user_content form.user_content_post_form:not(.submitted)").submit().addClass('submitted');
     }, 10);
   }
@@ -203,36 +203,35 @@ function handleYoutubeLink () {
       }
     }
 
-    ///////////// START layout related stuff
-
     // this next block of code adds the ellipsis on the breadcrumb if it overflows one line
-    var $breadcrumbs = $("#breadcrumbs"),
-        $breadcrumbEllipsis,
-        addedEllipsisClass = false;
-    function resizeBreadcrumb(){
-      var maxWidth = 500,
-          // we want to make sure that the breadcrumb doesnt wrap multiple lines, the way we are going to check if it is one line
-          // is by grabbing the first (which should be the home crumb) and checking to see how high it is, the * 1.5 part is
-          // just in case to ever handle any padding or margin.
-          hightOfOneBreadcrumb = $breadcrumbs.find('li:visible:first').height() * 1.5;
-      $breadcrumbEllipsis = $breadcrumbEllipsis || $breadcrumbs.find('.ellipsible');
-      $breadcrumbEllipsis.css('maxWidth', "");
-      $breadcrumbEllipsis.ifExists(function(){
-        for (var i=0; $breadcrumbs.height() > hightOfOneBreadcrumb && i < 20; i++) { //the i here is just to make sure we don't get into an ifinite loop somehow
-          if (!addedEllipsisClass) {
-            addedEllipsisClass = true;
-            $breadcrumbEllipsis.addClass('ellipsis');
+    const $breadcrumbs = $("#breadcrumbs")
+    if ($breadcrumbs.length) {
+      let $breadcrumbEllipsis
+      let addedEllipsisClass = false
+      // we want to make sure that the breadcrumb doesnt wrap multiple lines, the way we are going to check if it is one line
+      // is by grabbing the first (which should be the home crumb) and checking to see how high it is, the * 1.5 part is
+      // just in case to ever handle any padding or margin.
+      const hightOfOneBreadcrumb = $breadcrumbs.find('li:visible:first').height() * 1.5;
+
+      const resizeBreadcrumb = () => {
+        let maxWidth = 500
+        $breadcrumbEllipsis = $breadcrumbEllipsis || $breadcrumbs.find('.ellipsible');
+        $breadcrumbEllipsis.ifExists(() => {
+          $breadcrumbEllipsis.css('maxWidth', "");
+          for (let i=0; $breadcrumbs.height() > hightOfOneBreadcrumb && i < 20; i++) { // the i here is just to make sure we don't get into an ifinite loop somehow
+            if (!addedEllipsisClass) {
+              addedEllipsisClass = true;
+              $breadcrumbEllipsis.addClass('ellipsis');
+            }
+            $breadcrumbEllipsis.css('maxWidth', (maxWidth -= 20));
           }
-          $breadcrumbEllipsis.css('maxWidth', (maxWidth -= 20));
-        }
-      });
+        });
+      }
+      resizeBreadcrumb(); // force it to run once right now
+      $(window).resize(resizeBreadcrumb);
+      // end breadcrumb ellipsis
     }
-    resizeBreadcrumb(); //force it to run once right now
-    $(window).resize(resizeBreadcrumb);
-    // end breadcrumb ellipsis
 
-
-    //////////////// END layout related stuff
 
     KeyboardNavDialog.prototype.bindOpenKeys.call({$el: $('#keyboard_navigation')});
 
@@ -287,7 +286,7 @@ function handleYoutubeLink () {
         $dialog.html("<h2/><iframe style='background: url(/images/ajax-loader-medium-444.gif) no-repeat left top; width: 800px; height: 350px; border: 0;' src='about:blank' borderstyle='0'/><div style='text-align: right;'><a href='#' class='original_link external external_link' target='_blank'>" + htmlEscape(I18n.t('links.view_equella_content_in_new_window', "view the content in a new window")) + "</a>");
         $dialog.find("h2").text($(this).attr('title') || $(this).text() || I18n.t('titles.equella_content_preview', "Equella Content Preview"));
         var $iframe = $dialog.find("iframe");
-        setTimeout(function() {
+        setTimeout(() => {
           $iframe.css('background', '#fff');
         }, 2500);
         $("body").append($dialog);
@@ -323,7 +322,7 @@ function handleYoutubeLink () {
     // the :not clause is to not allow users access to this functionality in their content.
     $('.dialog_opener[aria-controls]:not(.user_content *)').live('click', function(event){
       var link = this;
-      $('#' + $(this).attr('aria-controls')).ifExists(function($dialog){
+      $('#' + $(this).attr('aria-controls')).ifExists($dialog => {
         event.preventDefault();
 
         // if the linked dialog has not already been initialized, initialize it (passing in opts)
@@ -343,7 +342,7 @@ function handleYoutubeLink () {
       $("a.file_preview_link").live('click', function(event) {
         event.preventDefault();
         var $link = $(this).loadingImage({image_size: 'small'}).hide();
-        $.ajaxJSON($link.attr('href').replace(/\/download/, ""), 'GET', {}, function(data) {
+        $.ajaxJSON($link.attr('href').replace(/\/download/, ""), 'GET', {}, data => {
           var attachment = data && data.attachment;
           $link.loadingImage('remove');
           if (attachment &&
@@ -358,12 +357,12 @@ function handleYoutubeLink () {
                 attachment_preview_processing: attachment.workflow_state == 'pending_upload' || attachment.workflow_state == 'processing'
               })
             var $minimizeLink = $('<a href="#" style="font-size: 0.8em;" class="hide_file_preview_link">' + htmlEscape(I18n.t('links.minimize_file_preview', 'Minimize File Preview')) + '</a>')
-              .click(function(event) {
+              .click(event => {
                 event.preventDefault();
                 $link.show();
                 $link.focus();
                 $div.remove();
-                $.trackEvent('hide_embedded_content', 'hide_file_preview');
+                trackEvent('hide_embedded_content', 'hide_file_preview');
               });
             $div.prepend($minimizeLink);
             if (Object.prototype.hasOwnProperty.call(event, "originalEvent")) {
@@ -371,14 +370,14 @@ function handleYoutubeLink () {
               // If it was triggered by our auto_open stuff it shouldn't focus here.
               $minimizeLink.focus();
             }
-            $.trackEvent('show_embedded_content', 'show_file_preview');
+            trackEvent('show_embedded_content', 'show_file_preview');
           }
-        }, function() {
+        }, () => {
           $link.loadingImage('remove').hide();
         });
       });
     } else {
-      $("a.file_preview_link").live('click', function(event) {
+      $("a.file_preview_link").live('click', event => {
         event.preventDefault();
         alert(I18n.t('alerts.file_previews_disabled', 'File previews have been disabled for this Canvas site'));
       });
@@ -386,14 +385,14 @@ function handleYoutubeLink () {
 
     // publishing the 'userContent/change' will run enhanceUserContent at most once every 50ms
     var enhanceUserContentTimeout;
-    $.subscribe('userContent/change', function(){
+    $.subscribe('userContent/change', () => {
       clearTimeout(enhanceUserContentTimeout);
       enhanceUserContentTimeout = setTimeout(enhanceUserContent, 50);
     });
 
 
     $(document).bind('user_content_change', enhanceUserContent);
-    $(function () {
+    $(() => {
       setInterval(enhanceUserContent, 15000);
       setTimeout(enhanceUserContent, 15);
     })
@@ -446,7 +445,7 @@ function handleYoutubeLink () {
       $(document).triggerHandler('richTextStart', $("#" + id));
       $response.find("textarea:first").focus().select();
     });
-    $(document).bind('richTextStart', function(event, $editor) {
+    $(document).bind('richTextStart', (event, $editor) => {
       if(!$editor || $editor.length === 0) { return; }
       $editor = $($editor);
       if(!$editor || $editor.length === 0) { return; }
@@ -455,7 +454,7 @@ function handleYoutubeLink () {
         hide: function() { $('#sidebar_content').show() }
       })
       RichContentEditor.loadNewEditor($editor, { focus: true })
-    }).bind('richTextEnd', function(event, $editor) {
+    }).bind('richTextEnd', (event, $editor) => {
       if(!$editor || $editor.length === 0) { return; }
       $editor = $($editor);
       if(!$editor || $editor.length === 0) { return; }
@@ -510,7 +509,7 @@ function handleYoutubeLink () {
         $.flashMessage('Message Sent!');
         $(document).triggerHandler('user_content_change');
         if(location.pathname === '/') {
-          $.trackEvent('dashboard_comment', 'create');
+          trackEvent('dashboard_comment', 'create');
         }
       },
       error: function(data) {
@@ -563,7 +562,7 @@ function handleYoutubeLink () {
         $(document).triggerHandler('user_content_change');
         $(this).remove();
         if(location.href.match(/dashboard/)) {
-          $.trackEvent('dashboard_comment', 'create');
+          trackEvent('dashboard_comment', 'create');
         }
       },
       error: function(data) {
@@ -742,11 +741,11 @@ function handleYoutubeLink () {
 
     var sequence_url = $('#sequence_footer .sequence_details_url').filter(':last').attr('href');
     if (sequence_url) {
-      $.ajaxJSON(sequence_url, 'GET', {}, function(data) {
+      $.ajaxJSON(sequence_url, 'GET', {}, data => {
         var $sequence_footer = $('#sequence_footer');
         if (data.current_item) {
           $('#sequence_details .current').fillTemplateData({data: data.current_item.content_tag});
-          $.each({previous:'.prev', next:'.next'}, function(label, cssClass) {
+          $.each({previous:'.prev', next:'.next'}, (label, cssClass) => {
             var $link = $sequence_footer.find(cssClass);
             if (data[label + '_item'] || data[label + '_module']) {
               var tag = (data[label + '_item']    && data[label + '_item'].content_tag) ||

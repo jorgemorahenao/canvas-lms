@@ -100,10 +100,6 @@ class ContextExternalTool < ActiveRecord::Base
       settings['content_migration'].key?('import_start_url')
   end
 
-  def lti_1_3_enabled?
-    use_1_3? && context.root_account.feature_enabled?(:lti_1_3)
-  end
-
   def extension_setting(type, property = nil)
     val = calclulate_extension_setting(type, property)
     if val && property == :icon_url
@@ -610,20 +606,8 @@ end
     end
   end
 
-  LOR_TYPES = [:course_home_sub_navigation, :course_settings_sub_navigation, :global_navigation,
-               :assignment_menu, :file_menu, :discussion_topic_menu, :module_menu, :quiz_menu,
-               :wiki_page_menu]
   def self.all_tools_for(context, options={})
-    #options[:type] is deprecated, use options[:placements] instead
     placements =* options[:placements] || options[:type]
-
-    #special LOR feature flag
-    unless (options[:root_account] && options[:root_account].feature_enabled?(:lor_for_account))
-      valid_placements = placements.select{|placement| !LOR_TYPES.include?(placement.to_sym)}
-      return [] if valid_placements.size == 0 && placements.size > 0
-      placements = valid_placements
-    end
-
     contexts = []
     if options[:user]
       contexts << options[:user]
@@ -805,6 +789,10 @@ end
 
   def visible_with_permission_check?(launch_type, user, context, session=nil)
     return false unless self.class.visible?(self.extension_setting(launch_type, 'visibility'), user, context, session)
+    permission_given?(launch_type, user, context, session)
+  end
+
+  def permission_given?(launch_type, user, context, session=nil)
     if (required_permissions_str = self.extension_setting(launch_type, 'required_permissions'))
       # if configured with a comma-separated string of permissions, will only show the link
       # if all permissions are granted

@@ -63,9 +63,10 @@ export default class CommentTextArea extends Component {
       createSubmissionComment: {
         submissionComment: {
           _id: 'pending',
-          comment: this.state.commentText,
-          updatedAt: new Date().toISOString(),
           attachments: [],
+          comment: this.state.commentText,
+          read: true,
+          updatedAt: new Date().toISOString(),
           author: {
             avatarUrl: this.props.assignment.env.currentUser.avatar_image_url,
             shortName: this.props.assignment.env.currentUser.display_name,
@@ -138,7 +139,7 @@ export default class CommentTextArea extends Component {
 
   renderAlert(data, error) {
     return (
-      <React.Fragment>
+      <>
         {data && (
           <Alert
             screenReaderOnly
@@ -153,7 +154,7 @@ export default class CommentTextArea extends Component {
             {I18n.t('Error sending submission comment')}
           </Alert>
         )}
-      </React.Fragment>
+      </>
     )
   }
 

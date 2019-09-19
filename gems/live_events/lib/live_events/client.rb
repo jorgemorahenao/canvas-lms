@@ -23,10 +23,13 @@ require 'active_support/core_ext/object/blank'
 
 module LiveEvents
   class Client
+    ATTRIBUTE_BLACKLIST = [:compact_live_events].freeze
+
     attr_reader :stream_name, :stream_client
 
     def self.config
       res = LiveEvents.settings
+      return true if res['stub_kinesis']
       return nil unless res && !res['kinesis_stream_name'].blank? &&
                                (!res['aws_region'].blank? || !res['aws_endpoint'].blank?)
 
@@ -67,7 +70,7 @@ module LiveEvents
       statsd_prefix = "live_events.events.#{event_name}"
 
       ctx ||= {}
-      attributes = ctx.merge({
+      attributes = ctx.except(*ATTRIBUTE_BLACKLIST).merge({
         event_name: event_name,
         event_time: time.utc.iso8601(3)
       })

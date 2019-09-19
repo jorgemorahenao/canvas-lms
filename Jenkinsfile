@@ -18,26 +18,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-gems = [
-  'analytics',
-  'banner_grade_export_plugin',
-  'canvas_geoip',
-  'canvas_salesforce_plugin',
-  'canvas_webhooks',
-  'canvas_zendesk_plugin',
-  'canvasnet_registration',
-  'catalog_provisioner',
-  'custom_reports',
-  'demo_site',
-  'ims_es_importer_plugin',
-  'instructure_misc_plugin',
-  'migration_tool',
-  'multiple_root_accounts',
-  'phone_home_plugin',
-  'respondus_lockdown_browser',
-  'uuid_provisioner'
-]
-
 def withGerritCredentials = { Closure command ->
   withCredentials([
     sshUserPrivateKey(credentialsId: '44aa91d6-ab24-498a-b2b4-911bcb17cc35', keyFileVariable: 'SSH_KEY_PATH', usernameVariable: 'SSH_USERNAME')
@@ -46,6 +26,7 @@ def withGerritCredentials = { Closure command ->
 
 def fetchFromGerrit = { String repo, String path, String customRepoDestination = null, String sourcePath = null ->
   withGerritCredentials({ ->
+    println "Fetching ${repo} plugin"
     sh """
       mkdir -p ${path}/${customRepoDestination ?: repo}
       GIT_SSH_COMMAND='ssh -i \"$SSH_KEY_PATH\" -l \"$SSH_USERNAME\"' \
@@ -54,18 +35,29 @@ def fetchFromGerrit = { String repo, String path, String customRepoDestination =
   })
 }
 
+def build_parameters = [
+  string(name: 'GERRIT_REFSPEC', value: "${env.GERRIT_REFSPEC}"),
+  string(name: 'GERRIT_EVENT_TYPE', value: "${env.GERRIT_EVENT_TYPE}"),
+  string(name: 'GERRIT_BRANCH', value: "${env.GERRIT_BRANCH}"),
+  string(name: 'GERRIT_CHANGE_NUMBER', value: "${env.GERRIT_CHANGE_NUMBER}"),
+  string(name: 'GERRIT_PATCHSET_NUMBER', value: "${env.GERRIT_PATCHSET_NUMBER}"),
+  string(name: 'GERRIT_EVENT_ACCOUNT_NAME', value: "${env.GERRIT_EVENT_ACCOUNT_NAME}"),
+  string(name: 'GERRIT_EVENT_ACCOUNT_EMAIL', value: "${env.GERRIT_EVENT_ACCOUNT_EMAIL}")
+]
+
 pipeline {
   agent { label 'docker' }
 
   options {
     ansiColor('xterm')
-    parallelsAlwaysFailFast()
   }
 
   environment {
-    COMPOSE_FILE = 'docker-compose.new-jenkins.yml'
+    // include selenium while smoke is running locally
+    COMPOSE_FILE = 'docker-compose.new-jenkins.yml:docker-compose.new-jenkins-selenium.yml'
     GERRIT_PORT = '29418'
     GERRIT_URL = "$GERRIT_HOST:$GERRIT_PORT"
+
     // 'refs/changes/63/181863/8' -> '63.181863.8'
     NAME = "${env.GERRIT_REFSPEC}".minus('refs/changes/').replaceAll('/','.')
     PATCHSET_TAG = "$DOCKER_REGISTRY_FQDN/jenkins/canvas-lms:$NAME"
@@ -73,10 +65,10 @@ pipeline {
   }
 
   stages {
-    stage('Debug') {
+    stage('Print Env Variables') {
       steps {
         timeout(time: 20, unit: 'SECONDS') {
-          sh 'printenv | sort'
+        sh 'printenv | sort'
         }
       }
     }
@@ -90,14 +82,16 @@ pipeline {
               sh '''
                 gerrit_message="\u2615 $JOB_BASE_NAME build started.\nTag: canvas-lms:$NAME\n$BUILD_URL"
                 ssh -i "$SSH_KEY_PATH" -l "$SSH_USERNAME" -p $GERRIT_PORT \
-                  hudson@$GERRIT_HOST gerrit review -m "'$gerrit_message'" $GERRIT_CHANGE_NUMBER,$GERRIT_PATCHSET_NUMBER
+                hudson@$GERRIT_HOST gerrit review -m "'$gerrit_message'" $GERRIT_CHANGE_NUMBER,$GERRIT_PATCHSET_NUMBER
               '''
             })
 
+            fetchFromGerrit('gerrit_builder', '.', '', 'canvas-lms/config')
+            gems = readFile('gerrit_builder/canvas-lms/config/plugins_list').split()
+            println "Plugin list: ${gems}"
             /* fetch plugins */
             gems.each { gem -> fetchFromGerrit(gem, 'gems/plugins') }
             fetchFromGerrit('qti_migration_tool', 'vendor', 'QTIMigrationTool')
-            fetchFromGerrit('gerrit_builder', '.', '', 'canvas-lms/config')
             sh '''
               mv gerrit_builder/canvas-lms/config/* config/
               rmdir -p gerrit_builder/canvas-lms/config
@@ -144,22 +138,111 @@ pipeline {
       }
     }
 
-    stage('Smoke Test') {
+    stage('Publish Patchset Image') {
       steps {
-        timeout(time: 10) {
-          sh 'build/new-jenkins/smoke-test.sh'
+        timeout(time: 5) {
+          // always push the patchset tag otherwise when a later
+          // patchset is merged this patchset tag is overwritten
+          sh 'docker push $PATCHSET_TAG'
         }
       }
     }
 
-    stage('Publish Image') {
+    stage('Parallel Run Tests') {
+      parallel {
+        // TODO: this is temporary until we can get some actual builds passing
+        stage('Smoke Test') {
+          steps {
+            timeout(time: 10) {
+              sh 'build/new-jenkins/docker-compose-build-up.sh'
+              sh 'build/new-jenkins/docker-compose-create-migrate-database.sh'
+              sh 'build/new-jenkins/smoke-test.sh'
+            }
+          }
+        }
+
+        stage('Selenium Chrome') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'selenium-chrome',
+              propagate: false,
+              parameters: build_parameters
+            )
+          }
+        }
+
+        stage('Vendored Gems') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'vendored-gems',
+              parameters: build_parameters
+            )
+          }
+        }
+
+        stage('Rspec') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'rspec',
+              propagate: false,
+              parameters: build_parameters
+            )
+          }
+        }
+
+        stage('Selenium Performance Chrome') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'selenium-performance-chrome',
+              propagate: false,
+              parameters: build_parameters
+            )
+          }
+        }
+
+        stage('Contract Tests') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'contract-tests',
+              propagate: false,
+              parameters: build_parameters
+            )
+          }
+        }
+
+        stage('Linters and JS') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'linters-and-js',
+              propagate: false,
+              parameters: build_parameters
+            )
+          }
+        }
+
+        stage('Xbrowser') {
+          steps {
+            // propagate set to false until we can get tests passing
+            build(
+              job: 'xbrowser',
+              propagate: false,
+              parameters: build_parameters
+            )
+          }
+        }
+      }
+    }
+
+    stage('Publish Merged Image') {
       steps {
         timeout(time: 5) {
           script {
-            // always push the patchset tag otherwise when a later
-            // patchset is merged this patchset tag is overwritten
-            sh 'docker push $PATCHSET_TAG'
-
             if (env.GERRIT_EVENT_TYPE == 'change-merged') {
               sh '''
                 docker tag $PATCHSET_TAG $MERGE_TAG
@@ -198,9 +281,7 @@ pipeline {
     }
 
     cleanup {
-      script {
-        sh 'docker-compose down --volumes --rmi local'
-      }
+        sh 'build/new-jenkins/docker-cleanup.sh'
     }
   }
 }

@@ -329,6 +329,16 @@ test('does not allow blank external tool url', function() {
   )
 })
 
+test('does not allow blank default external tool url', function() {
+  const view = this.editView()
+  const data = {submission_type: 'external_tool'}
+  const errors = view._validateExternalTool(data, [])
+  equal(
+    errors['default-tool-launch-button'][0].message,
+    'External Tool URL cannot be left blank'
+  )
+})
+
 test('does not validate allowed extensions if file uploads is not a submission type', function() {
   const view = this.editView()
   const data = {submission_types: ['online_url'], allowed_extensions: []}
@@ -1294,7 +1304,7 @@ test('does not show the description textarea', function() {
   equal(this.view.$description.length, 0)
 })
 
-test('does not show the moderated grading checkbox', function() {
+test('does not show the moderated grading checkbox', () => {
   equal(document.getElementById('assignment_moderated_grading'), null)
 })
 
@@ -1387,17 +1397,17 @@ QUnit.module('EditView: Anonymous Instructor Annotations', (hooks) => {
     fixtures.innerHTML = ''
   })
 
-  test('when environment is not set, does not enable editing the property', function() {
+  test('when environment is not set, does not enable editing the property', () => {
     setupFakeEnv()
     strictEqual(editView().$el.find('input#assignment_anonymous_instructor_annotations').length, 0)
   })
 
-  test('when environment is set to false, does not enable editing the property', function() {
+  test('when environment is set to false, does not enable editing the property', () => {
     setupFakeEnv({ANONYMOUS_INSTRUCTOR_ANNOTATIONS_ENABLED: false})
     strictEqual(editView().$el.find('input#assignment_anonymous_instructor_annotations').length, 0)
   })
 
-  test('when environment is set to true, enables editing the property', function() {
+  test('when environment is set to true, enables editing the property', () => {
     setupFakeEnv({ANONYMOUS_INSTRUCTOR_ANNOTATIONS_ENABLED: true})
     strictEqual(editView().$el.find('input#assignment_anonymous_instructor_annotations').length, 1)
   })
